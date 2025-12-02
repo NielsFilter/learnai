@@ -8,7 +8,7 @@ def main(myblob: func.InputStream):
                  f"Blob Size: {myblob.length} bytes")
 
     try:
-        # The name comes as "documents/filename.pdf", we might just want the filename
+        # The name comes as "docs/filename.pdf", we might just want the filename
         filename = myblob.name.split('/')[-1]
         
         # Read the blob content

@@ -5,7 +5,7 @@
             "name": "myblob",
             "type": "blobTrigger",
             "direction": "in",
-            "path": "documents/{name}",
+            "path": "docs/{name}",
             "connection": "BLOB_STORAGE_CONNECTION_STRING"
         }
     ]

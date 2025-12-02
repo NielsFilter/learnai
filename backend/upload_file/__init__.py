@@ -4,7 +4,7 @@ import os
 from azure.storage.blob import BlobServiceClient
 
 def main(req: func.HttpRequest) -> func.HttpResponse:
-    logging.info('Python HTTP trigger function processed a request.')
+    logging.info('Python HTTP trigger function processed a request.....')
 
     try:
         max_mb = int(os.getenv("MAX_FILE_SIZE_MB", 4))
@@ -61,7 +61,7 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
         # Connect to Blob Storage
         connect_str = os.getenv('BLOB_STORAGE_CONNECTION_STRING') #TODO: Managed identity...
         blob_service_client = BlobServiceClient.from_connection_string(connect_str)
-        container_name = "documents"
+        container_name = "docs"
         
         # Create container if it doesn't exist
         container_client = blob_service_client.get_container_client(container_name)
@@ -70,13 +70,16 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
 
         # Upload file
         blob_client = container_client.get_blob_client(filename)
-        blob_client.upload_blob(file_content, overwrite=True)
+        blob_client.upload_blob(bytes(file_content), overwrite=True)
 
         return func.HttpResponse(f"File {filename} uploaded successfully.", status_code=200)
 
     except Exception as e:
+        import traceback
+        tb = traceback.format_exc()
         logging.error(f"Error uploading file: {e}")
+        logging.error(tb)
         return func.HttpResponse(
-            f"An error occurred: {str(e)}",
+            f"An error occurred: {str(e)}\n\nTraceback:\n{tb}",
             status_code=500
         )

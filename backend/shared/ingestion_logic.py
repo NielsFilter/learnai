@@ -20,11 +20,11 @@ def get_openai_client():
 # Initialize Document Intelligence Client
 def get_document_intelligence_client():
     #TODO: Managed identity...
-    endpoint = os.getenv("AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT")
-    key = os.getenv("AZURE_DOCUMENT_INTELLIGENCE_KEY")
+    endpoint = os.getenv("AZURE_FORM_RECOGNIZER_ENDPOINT")
+    key = os.getenv("AZURE_FORM_RECOGNIZER_KEY")
     
     if not endpoint or not key:
-        raise ValueError("AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT and AZURE_DOCUMENT_INTELLIGENCE_KEY must be set")
+        raise ValueError("AZURE_FORM_RECOGNIZER_ENDPOINT and AZURE_FORM_RECOGNIZER_KEY must be set")
 
     return DocumentIntelligenceClient(endpoint=endpoint, credential=AzureKeyCredential(key))
 
@@ -36,7 +36,7 @@ def get_cosmos_collection():
     
     client = MongoClient(connection_string)
     db = client["rag_db"] # Database name
-    collection = db["documents"] # Collection name
+    collection = db["docs"] # Collection name
     return collection
 
 def extract_text_from_pdf(file_stream: bytes) -> str:
@@ -51,7 +51,7 @@ def extract_text_from_pdf(file_stream: bytes) -> str:
         
         poller = client.begin_analyze_document(
             "prebuilt-layout", 
-            analyze_request=file_stream,
+            body=file_stream,
             content_type="application/octet-stream"
         )
         result: AnalyzeResult = poller.result()
@@ -98,7 +98,7 @@ def store_vectors(filename: str, chunks: List[str], embeddings: List[List[float]
     """Stores text chunks and their embeddings in Cosmos DB."""
     collection = get_cosmos_collection()
     
-    documents = []
+    docs = []
     for i, (chunk, embedding) in enumerate(zip(chunks, embeddings)):
         doc = {
             "filename": filename,
@@ -109,18 +109,27 @@ def store_vectors(filename: str, chunks: List[str], embeddings: List[List[float]
                 "source": filename
             }
         }
-        documents.append(doc)
+        docs.append(doc)
     
-    if documents:
-        collection.insert_many(documents)
-        logging.info(f"Stored {len(documents)} chunks for {filename} in Cosmos DB.")
+    if docs:
+        collection.insert_many(docs)
+        logging.info(f"Stored {len(docs)} chunks for {filename} in Cosmos DB.")
 
 def process_document(filename: str, file_stream: bytes):
     """Orchestrates the document processing flow."""
     logging.info(f"Starting processing for {filename}")
     
     # 1. Extract
-    text = extract_text_from_pdf(file_stream)
+    if filename.lower().endswith('.txt'):
+        logging.info(f"Processing {filename} as text file")
+        try:
+            text = file_stream.decode('utf-8')
+        except UnicodeDecodeError:
+            # Fallback to latin-1 if utf-8 fails
+            text = file_stream.decode('latin-1')
+    else:
+        logging.info(f"Processing {filename} with Document Intelligence")
+        text = extract_text_from_pdf(file_stream)
     if not text.strip():
         logging.warning(f"No text extracted from {filename}")
         return
