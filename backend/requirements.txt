@@ -3,5 +3,5 @@ azure-storage-blob
 azure-cosmos
 pymongo
 openai
-pypdf2
+azure-ai-documentintelligence
 langchain-text-splitters

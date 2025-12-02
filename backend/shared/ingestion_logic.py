@@ -1,11 +1,13 @@
 import os
 import logging
 import io
-import PyPDF2
 from typing import List, Dict, Any
 from openai import AzureOpenAI
 from pymongo import MongoClient
 from langchain_text_splitters import RecursiveCharacterTextSplitter
+from azure.core.credentials import AzureKeyCredential
+from azure.ai.documentintelligence import DocumentIntelligenceClient
+from azure.ai.documentintelligence.models import AnalyzeResult
 
 # Initialize Azure OpenAI Client
 def get_openai_client():
@@ -14,6 +16,17 @@ def get_openai_client():
         api_version="2023-05-15",
         azure_endpoint=os.getenv("AZURE_OPENAI_ENDPOINT")
     )
+
+# Initialize Document Intelligence Client
+def get_document_intelligence_client():
+    #TODO: Managed identity...
+    endpoint = os.getenv("AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT")
+    key = os.getenv("AZURE_DOCUMENT_INTELLIGENCE_KEY")
+    
+    if not endpoint or not key:
+        raise ValueError("AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT and AZURE_DOCUMENT_INTELLIGENCE_KEY must be set")
+
+    return DocumentIntelligenceClient(endpoint=endpoint, credential=AzureKeyCredential(key))
 
 # Initialize Cosmos DB Client
 def get_cosmos_collection():
@@ -27,15 +40,31 @@ def get_cosmos_collection():
     return collection
 
 def extract_text_from_pdf(file_stream: bytes) -> str:
-    """Extracts text from a PDF file stream."""
+    """Extracts text from a PDF file stream using Azure Document Intelligence."""
     try:
-        pdf_reader = PyPDF2.PdfReader(io.BytesIO(file_stream))
-        text = ""
-        for page in pdf_reader.pages:
-            text += page.extract_text() + "\n"
-        return text
+        client = get_document_intelligence_client()
+        
+        # Document Intelligence expects a file-like object or bytes
+        # For 'begin_analyze_document', we can pass the bytes directly if we use the 'analyze_document' method 
+        # but the SDK structure for bytes usually requires a Poller.
+        # Let's use the synchronous client's begin_analyze_document which returns a poller.
+        
+        poller = client.begin_analyze_document(
+            "prebuilt-layout", 
+            analyze_request=file_stream,
+            content_type="application/octet-stream"
+        )
+        result: AnalyzeResult = poller.result()
+        
+        # Extract text from the result
+        # We can also extract tables, selection marks, etc. if needed.
+        # For now, we just want the full text content.
+        if result.content:
+            return result.content
+        return ""
+
     except Exception as e:
-        logging.error(f"Error extracting text from PDF: {e}")
+        logging.error(f"Error extracting text from PDF with Document Intelligence: {e}")
         raise
 
 def chunk_text(text: str, chunk_size: int = 1000, chunk_overlap: int = 200) -> List[str]:
