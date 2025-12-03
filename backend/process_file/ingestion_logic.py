@@ -13,13 +13,12 @@ from azure.ai.documentintelligence.models import AnalyzeResult
 def get_openai_client():
     return AzureOpenAI(
         api_key=os.getenv("AZURE_OPENAI_API_KEY"),
-        api_version="2023-05-15",
+        api_version="2024-12-01-preview",
         azure_endpoint=os.getenv("AZURE_OPENAI_ENDPOINT")
     )
 
 # Initialize Document Intelligence Client
 def get_document_intelligence_client():
-    #TODO: Managed identity...
     endpoint = os.getenv("AZURE_FORM_RECOGNIZER_ENDPOINT")
     key = os.getenv("AZURE_FORM_RECOGNIZER_KEY")
     
@@ -28,14 +27,14 @@ def get_document_intelligence_client():
 
     return DocumentIntelligenceClient(endpoint=endpoint, credential=AzureKeyCredential(key))
 
-# Initialize Cosmos DB Client
-def get_cosmos_collection():
-    connection_string = os.getenv("COSMOS_DB_CONNECTION_STRING")
+# Initialize MongoDB Client
+def get_mongo_collection():
+    connection_string = os.getenv("MONGO_DB_CONNECTION_STRING")
     if not connection_string:
-        raise ValueError("COSMOS_DB_CONNECTION_STRING is not set")
+        raise ValueError("MONGO_DB_CONNECTION_STRING is not set")
     
     client = MongoClient(connection_string)
-    db = client["rag_db"] # Database name
+    db = client["learnai"] # Database name
     collection = db["docs"] # Collection name
     return collection
 
@@ -79,7 +78,11 @@ def chunk_text(text: str, chunk_size: int = 1000, chunk_overlap: int = 200) -> L
 def generate_embeddings(text_chunks: List[str]) -> List[List[float]]:
     """Generates embeddings for a list of text chunks using Azure OpenAI."""
     client = get_openai_client()
-    deployment = os.getenv("AZURE_OPENAI_EMBEDDING_DEPLOYMENT", "text-embedding-3-small")
+    deployment = os.getenv("AZURE_OPENAI_EMBEDDING_DEPLOYMENT")
+
+    # Throw exception if the deployment is not set
+    if not deployment:
+        raise ValueError("AZURE_OPENAI_EMBEDDING_DEPLOYMENT is not set")
     
     embeddings = []
     # Process in batches to avoid hitting limits if necessary, but for now simple loop
@@ -95,8 +98,8 @@ def generate_embeddings(text_chunks: List[str]) -> List[List[float]]:
         raise
 
 def store_vectors(filename: str, chunks: List[str], embeddings: List[List[float]]):
-    """Stores text chunks and their embeddings in Cosmos DB."""
-    collection = get_cosmos_collection()
+    """Stores text chunks and their embeddings in MongoDB."""
+    collection = get_mongo_collection()
     
     docs = []
     for i, (chunk, embedding) in enumerate(zip(chunks, embeddings)):
@@ -113,7 +116,7 @@ def store_vectors(filename: str, chunks: List[str], embeddings: List[List[float]
     
     if docs:
         collection.insert_many(docs)
-        logging.info(f"Stored {len(docs)} chunks for {filename} in Cosmos DB.")
+        logging.info(f"Stored {len(docs)} chunks for {filename} in MongoDB.")
 
 def process_document(filename: str, file_stream: bytes):
     """Orchestrates the document processing flow."""

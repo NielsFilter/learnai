@@ -1,6 +1,5 @@
 azure-functions
 azure-storage-blob
-azure-cosmos
 pymongo
 openai
 azure-ai-documentintelligence

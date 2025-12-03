@@ -1,6 +1,6 @@
 import logging
 import azure.functions as func
-from shared import ingestion_logic
+from . import ingestion_logic
 
 def main(myblob: func.InputStream):
     logging.info(f"Python blob trigger function processed blob \n"
