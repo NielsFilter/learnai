@@ -5,11 +5,17 @@
             "label": "func: host start",
             "type": "shell",
             "command": "func host start",
+            "windows": {
+                "command": "${workspaceFolder}\\.venv\\Scripts\\activate ; func host start"
+            },
             "problemMatcher": "$func-python-watch",
             "isBackground": true,
             "dependsOn": "pip install (functions)",
             "options": {
-                "cwd": "${workspaceFolder}/backend"
+                "cwd": "${workspaceFolder}/backend",
+                "env": {
+                    "PYTHONPATH": "${workspaceFolder}\\.venv\\Lib\\site-packages"
+                }
             }
         },
         {

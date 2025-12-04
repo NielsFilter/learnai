@@ -2,39 +2,13 @@ import os
 import logging
 import io
 from typing import List, Dict, Any
-from openai import AzureOpenAI
-from pymongo import MongoClient
 from langchain_text_splitters import RecursiveCharacterTextSplitter
-from azure.core.credentials import AzureKeyCredential
-from azure.ai.documentintelligence import DocumentIntelligenceClient
 from azure.ai.documentintelligence.models import AnalyzeResult
+from ..shared.clients import get_openai_client, get_document_intelligence_client, get_mongo_db
 
-# Initialize Azure OpenAI Client
-def get_openai_client():
-    return AzureOpenAI(
-        api_key=os.getenv("AZURE_OPENAI_API_KEY"),
-        api_version="2024-12-01-preview",
-        azure_endpoint=os.getenv("AZURE_OPENAI_ENDPOINT")
-    )
-
-# Initialize Document Intelligence Client
-def get_document_intelligence_client():
-    endpoint = os.getenv("AZURE_FORM_RECOGNIZER_ENDPOINT")
-    key = os.getenv("AZURE_FORM_RECOGNIZER_KEY")
-    
-    if not endpoint or not key:
-        raise ValueError("AZURE_FORM_RECOGNIZER_ENDPOINT and AZURE_FORM_RECOGNIZER_KEY must be set")
-
-    return DocumentIntelligenceClient(endpoint=endpoint, credential=AzureKeyCredential(key))
-
-# Initialize MongoDB Client
+# Initialize MongoDB Collection
 def get_mongo_collection():
-    connection_string = os.getenv("MONGO_DB_CONNECTION_STRING")
-    if not connection_string:
-        raise ValueError("MONGO_DB_CONNECTION_STRING is not set")
-    
-    client = MongoClient(connection_string)
-    db = client["learnai"] # Database name
+    db = get_mongo_db()
     collection = db["docs"] # Collection name
     return collection
 
@@ -97,7 +71,7 @@ def generate_embeddings(text_chunks: List[str]) -> List[List[float]]:
         logging.error(f"Error generating embeddings: {e}")
         raise
 
-def store_vectors(filename: str, chunks: List[str], embeddings: List[List[float]]):
+def store_vectors(filename: str, chunks: List[str], embeddings: List[List[float]], project_id: str):
     """Stores text chunks and their embeddings in MongoDB."""
     collection = get_mongo_collection()
     
@@ -109,7 +83,8 @@ def store_vectors(filename: str, chunks: List[str], embeddings: List[List[float]
             "text": chunk,
             "vector": embedding,
             "metadata": {
-                "source": filename
+                "source": filename,
+                "projectId": project_id
             }
         }
         docs.append(doc)
@@ -118,7 +93,7 @@ def store_vectors(filename: str, chunks: List[str], embeddings: List[List[float]
         collection.insert_many(docs)
         logging.info(f"Stored {len(docs)} chunks for {filename} in MongoDB.")
 
-def process_document(filename: str, file_stream: bytes):
+def process_document(filename: str, file_stream: bytes, project_id: str = "global"):
     """Orchestrates the document processing flow."""
     logging.info(f"Starting processing for {filename}")
     
@@ -146,5 +121,5 @@ def process_document(filename: str, file_stream: bytes):
     logging.info(f"Generated {len(embeddings)} embeddings for {filename}")
 
     # 4. Store
-    store_vectors(filename, chunks, embeddings)
+    store_vectors(filename, chunks, embeddings, project_id)
     logging.info(f"Completed processing for {filename}")

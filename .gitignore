@@ -7,3 +7,4 @@ env/
 venv/
 local.settings.json
 .funcignore
+backend/serviceAccountKey.json

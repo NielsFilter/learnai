@@ -4,3 +4,4 @@ pymongo
 openai
 azure-ai-documentintelligence
 langchain-text-splitters
+firebase-admin
