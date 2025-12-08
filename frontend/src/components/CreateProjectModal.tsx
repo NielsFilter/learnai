@@ -14,7 +14,7 @@ interface CreateProjectModalProps {
 export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({ isOpen, onClose, onProjectCreated }) => {
     const [name, setName] = useState('');
     const [subject, setSubject] = useState('');
-    const [file, setFile] = useState<File | null>(null);
+    const [files, setFiles] = useState<FileList | null>(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
 
@@ -30,33 +30,38 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({ isOpen, 
             const project = await apiRequest('/projects', 'POST', { name, subject });
             const projectId = project._id;
 
-            // 2. Upload File
-            if (file) {
+            // 2. Upload Files
+            if (files && files.length > 0) {
                 const user = auth.currentUser;
                 if (!user) throw new Error('User not authenticated');
                 const token = await user.getIdToken();
 
-                const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || '/api'}/upload`, {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': `Bearer ${token}`,
-                        'X-Project-Id': projectId,
-                        'X-Filename': file.name,
-                        'Content-Type': 'application/octet-stream' // Or file.type, but backend reads body
-                    },
-                    body: file
+                const uploadPromises = Array.from(files).map(async (file) => {
+                    const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || '/api'}/upload`, {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': `Bearer ${token}`,
+                            'X-Project-Id': projectId,
+                            'X-Filename': file.name,
+                            'Content-Type': file.type || 'application/octet-stream',
+                        },
+                        body: file // Send file directly as body
+                    });
+
+                    if (!response.ok) {
+                        const errorText = await response.text();
+                        throw new Error(`Failed to upload ${file.name}: ${errorText}`);
+                    }
                 });
 
-                if (!response.ok) {
-                    throw new Error('File upload failed');
-                }
+                await Promise.all(uploadPromises);
             }
 
             onProjectCreated();
             onClose();
             setName('');
             setSubject('');
-            setFile(null);
+            setFiles(null);
         } catch (err: any) {
             setError(err.message || 'Failed to create project');
         } finally {
@@ -103,14 +108,19 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({ isOpen, 
                         <div className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-4 text-center cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors relative">
                             <input
                                 type="file"
-                                onChange={(e) => setFile(e.target.files?.[0] || null)}
+                                onChange={(e) => setFiles(e.target.files)}
                                 className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                                 accept=".pdf,.txt"
+                                multiple
                                 required
                             />
                             <div className="flex flex-col items-center gap-2 text-gray-500">
                                 <Upload className="w-6 h-6" />
-                                <span className="text-sm">{file ? file.name : "Click to upload file"}</span>
+                                <span className="text-sm">
+                                    {files && files.length > 0
+                                        ? `${files.length} file${files.length > 1 ? 's' : ''} selected`
+                                        : "Click to upload files"}
+                                </span>
                             </div>
                         </div>
                     </div>

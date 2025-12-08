@@ -23,5 +23,9 @@ export const apiRequest = async (endpoint: string, method: string = 'GET', body?
         throw new Error(`API request failed: ${response.statusText}`);
     }
 
+    if (response.status === 204) {
+        return null;
+    }
+
     return response.json();
 };

@@ -5,7 +5,7 @@ import { useParams } from 'react-router-dom';
 import { Button } from '../components/Button';
 import { Card } from '../components/Card';
 import { Input } from '../components/Input';
-import { Send, MessageSquare, FileQuestion } from 'lucide-react';
+import { Send, MessageSquare, FileQuestion, BookOpen } from 'lucide-react';
 
 interface Project {
     _id: string;
@@ -19,10 +19,18 @@ interface ChatMessage {
     timestamp: string;
 }
 
+interface Document {
+    filename: string;
+    summary: string;
+    uploadedAt: string;
+    isRegenerating?: boolean;
+}
+
 export const ProjectDetails: React.FC = () => {
     const { id } = useParams<{ id: string }>();
     const [project, setProject] = useState<Project | null>(null);
-    const [activeTab, setActiveTab] = useState<'chat' | 'quiz'>('chat');
+    const [documents, setDocuments] = useState<Document[]>([]);
+    const [activeTab, setActiveTab] = useState<'overview' | 'chat' | 'quiz'>('overview');
     const [loading, setLoading] = useState(true);
 
     // Chat State
@@ -49,11 +57,16 @@ export const ProjectDetails: React.FC = () => {
                 const found = projects.find((p: Project) => p._id === id);
                 if (found) {
                     setProject(found);
-                    const history = await apiRequest(`/chat?projectId=${id}`);
+                    const [history, docs] = await Promise.all([
+                        apiRequest(`/chat?projectId=${id}`),
+                        apiRequest(`/documents?projectId=${id}`)
+                    ]);
+
                     setMessages(history.map((h: any) => ([
                         { role: 'user', content: h.message, timestamp: h.timestamp },
                         { role: 'assistant', content: h.answer, timestamp: h.timestamp }
                     ])).flat());
+                    setDocuments(docs);
                 }
             } catch (error) {
                 console.error('Failed to fetch project data:', error);
@@ -86,6 +99,20 @@ export const ProjectDetails: React.FC = () => {
             console.error('Failed to send message:', error);
         } finally {
             setSending(false);
+        }
+    };
+
+    const handleRegenerateSummary = async (filename: string) => {
+        if (!id) return;
+
+        setDocuments(prev => prev.map(d => d.filename === filename ? { ...d, isRegenerating: true } : d));
+
+        try {
+            const response = await apiRequest('/summary/regenerate', 'POST', { projectId: id, filename });
+            setDocuments(prev => prev.map(d => d.filename === filename ? { ...d, summary: response.summary, isRegenerating: false } : d));
+        } catch (error) {
+            console.error('Failed to regenerate summary:', error);
+            setDocuments(prev => prev.map(d => d.filename === filename ? { ...d, isRegenerating: false } : d));
         }
     };
 
@@ -139,10 +166,19 @@ export const ProjectDetails: React.FC = () => {
                     </div>
                     <div className="flex gap-2 bg-gray-100 dark:bg-gray-800 p-1 rounded-lg">
                         <button
+                            onClick={() => setActiveTab('overview')}
+                            className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${activeTab === 'overview'
+                                ? 'bg-white dark:bg-gray-700 shadow-sm text-blue-600 dark:text-blue-400'
+                                : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
+                                }`}
+                        >
+                            Overview
+                        </button>
+                        <button
                             onClick={() => setActiveTab('chat')}
                             className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${activeTab === 'chat'
-                                    ? 'bg-white dark:bg-gray-700 shadow-sm text-blue-600 dark:text-blue-400'
-                                    : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
+                                ? 'bg-white dark:bg-gray-700 shadow-sm text-blue-600 dark:text-blue-400'
+                                : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
                                 }`}
                         >
                             <div className="flex items-center gap-2">
@@ -153,8 +189,8 @@ export const ProjectDetails: React.FC = () => {
                         <button
                             onClick={() => setActiveTab('quiz')}
                             className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${activeTab === 'quiz'
-                                    ? 'bg-white dark:bg-gray-700 shadow-sm text-blue-600 dark:text-blue-400'
-                                    : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
+                                ? 'bg-white dark:bg-gray-700 shadow-sm text-blue-600 dark:text-blue-400'
+                                : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
                                 }`}
                         >
                             <div className="flex items-center gap-2">
@@ -166,7 +202,80 @@ export const ProjectDetails: React.FC = () => {
                 </div>
 
                 <Card className="flex-1 overflow-hidden flex flex-col p-0">
-                    {activeTab === 'chat' ? (
+                    {activeTab === 'overview' ? (
+                        <div className="flex flex-col h-full">
+                            <div className="flex-1 overflow-y-auto p-6 space-y-6">
+                                <div className="prose dark:prose-invert max-w-none">
+                                    <h2 className="text-xl font-bold mb-4">Project Overview</h2>
+                                    <p className="text-gray-600 dark:text-gray-400">
+                                        Here are the documents uploaded to this project along with their AI-generated summaries.
+                                        Use this guide to understand the content and decide where to focus your studies.
+                                    </p>
+                                </div>
+
+                                <div className="space-y-4">
+                                    {documents.map((doc, idx) => (
+                                        <div key={idx} className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
+                                            <div className="flex items-center gap-2 mb-2">
+                                                <div className="p-2 bg-blue-100 dark:bg-blue-900 rounded-lg">
+                                                    <BookOpen className="w-5 h-5 text-blue-600 dark:text-blue-300" />
+                                                </div>
+                                                <h3 className="font-bold text-lg">{doc.filename}</h3>
+                                            </div>
+                                            <div className="pl-11">
+                                                <h4 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-1">Summary</h4>
+                                                {doc.summary === "Summary generation failed." ? (
+                                                    <div className="mt-2">
+                                                        <p className="text-red-500 text-sm mb-2">Summary generation failed.</p>
+                                                        <Button
+                                                            size="sm"
+                                                            variant="secondary"
+                                                            onClick={() => handleRegenerateSummary(doc.filename)}
+                                                            disabled={doc.isRegenerating}
+                                                        >
+                                                            {doc.isRegenerating ? 'Regenerating...' : 'Regenerate Summary'}
+                                                        </Button>
+                                                    </div>
+                                                ) : (
+                                                    <div
+                                                        className="text-gray-700 dark:text-gray-300 text-sm leading-relaxed prose dark:prose-invert max-w-none"
+                                                        dangerouslySetInnerHTML={{ __html: doc.summary || "Summary not available." }}
+                                                    />
+                                                )}
+                                            </div>
+                                        </div>
+                                    ))}
+                                    {documents.length === 0 && (
+                                        <div className="text-center py-10 text-gray-500">
+                                            No documents found. Upload a document to generate a summary.
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                            <div className="p-6 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900">
+                                <form
+                                    onSubmit={async (e) => {
+                                        e.preventDefault();
+                                        if (!newMessage.trim()) return;
+                                        setActiveTab('chat');
+                                        await handleSendMessage(e);
+                                    }}
+                                    className="flex gap-2"
+                                >
+                                    <Input
+                                        value={newMessage}
+                                        onChange={(e) => setNewMessage(e.target.value)}
+                                        placeholder="Ask a question about your documents..."
+                                        className="flex-1 w-full"
+                                        disabled={sending}
+                                    />
+                                    <Button type="submit" disabled={sending || !newMessage.trim()}>
+                                        <Send className="w-5 h-5" />
+                                    </Button>
+                                </form>
+                            </div>
+                        </div>
+                    ) : activeTab === 'chat' ? (
                         <div className="flex flex-col h-full">
                             <div className="flex-1 overflow-y-auto p-6 space-y-4">
                                 {messages.length === 0 && (
@@ -177,8 +286,8 @@ export const ProjectDetails: React.FC = () => {
                                 {messages.map((msg, idx) => (
                                     <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                                         <div className={`max-w-[80%] rounded-lg px-4 py-2 ${msg.role === 'user'
-                                                ? 'bg-blue-600 text-white'
-                                                : 'bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-100'
+                                            ? 'bg-blue-600 text-white'
+                                            : 'bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-100'
                                             }`}>
                                             <p className="whitespace-pre-wrap">{msg.content}</p>
                                         </div>
@@ -242,8 +351,8 @@ export const ProjectDetails: React.FC = () => {
                                             <div className="space-y-2">
                                                 {q.options.map((option: string, optIdx: number) => (
                                                     <label key={optIdx} className={`flex items-center p-3 rounded-lg border cursor-pointer transition-colors ${quizState.answers[idx] === option
-                                                            ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
-                                                            : 'border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800'
+                                                        ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
+                                                        : 'border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800'
                                                         }`}>
                                                         <input
                                                             type="radio"

@@ -12,6 +12,70 @@ def get_mongo_collection():
     collection = db["docs"] # Collection name
     return collection
 
+def get_documents_collection():
+    db = get_mongo_db()
+    return db["documents"]
+
+def generate_summary(text: str) -> str:
+    """Generates a high-level summary of the document using Azure OpenAI."""
+    client = get_openai_client()
+    deployment = os.getenv("AZURE_OPENAI_DEPLOYMENT_ID") # Use the chat model for summarization
+
+    if not deployment:
+        # Fallback or error if chat model deployment env var is different
+        # Assuming we use the same deployment as chat or a specific one. 
+        # Let's try to use a standard one or the one used for chat if defined.
+        # In ProjectDetails it calls /chat, let's see what that uses.
+        # For now, I'll assume AZURE_OPENAI_DEPLOYMENT_ID is set for chat/completions.
+        deployment = "gpt-4o-mini" # Default fallback or placeholder
+    
+    # Truncate text if too long to avoid token limits. 
+    # 100k chars is roughly 25k tokens, safe for gpt-4o-mini or similar.
+    truncated_text = text[:100000] 
+
+    prompt = (
+        "You are a helpful study assistant. Please provide a high-level summary of the following document content. "
+        "Include the general idea, a breakdown of chapters or key sections, and what the learner should focus on. "
+        "Format the output as simple HTML. Use <h1> for the main title, <h2> for sections, <b> for emphasis, and <ul>/<li> or <ol>/<li> for lists. "
+        "Do NOT use any CSS classes or inline styling. Do NOT use markdown."
+        "\n\nDocument Content:\n" + truncated_text
+    )
+
+    try:
+        response = client.chat.completions.create(
+            model=deployment,
+            messages=[
+                {"role": "system", "content": "You are a helpful AI assistant."},
+                {"role": "user", "content": prompt}
+            ],
+            temperature=0.5,
+            max_tokens=1000
+        )
+        return response.choices[0].message.content
+    except Exception as e:
+        logging.error(f"Error generating summary: {e}")
+        return "Summary generation failed."
+
+def store_document_metadata(filename: str, summary: str, project_id: str):
+    """Stores document metadata and summary in MongoDB."""
+    collection = get_documents_collection()
+    from datetime import datetime
+    
+    doc = {
+        "filename": filename,
+        "projectId": project_id,
+        "summary": summary,
+        "uploadedAt": datetime.utcnow().isoformat()
+    }
+    
+    # Upsert based on filename and projectId to avoid duplicates if re-processed
+    collection.update_one(
+        {"filename": filename, "projectId": project_id},
+        {"$set": doc},
+        upsert=True
+    )
+    logging.info(f"Stored metadata for {filename} in MongoDB.")
+
 def extract_text_from_pdf(file_stream: bytes) -> str:
     """Extracts text from a PDF file stream using Azure Document Intelligence."""
     try:
@@ -111,6 +175,11 @@ def process_document(filename: str, file_stream: bytes, project_id: str = "globa
     if not text.strip():
         logging.warning(f"No text extracted from {filename}")
         return
+
+    # 1.5 Generate and Store Summary
+    logging.info(f"Generating summary for {filename}")
+    summary = generate_summary(text)
+    store_document_metadata(filename, summary, project_id)
 
     # 2. Chunk
     chunks = chunk_text(text)

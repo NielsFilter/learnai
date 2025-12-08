@@ -27,52 +27,67 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
         # We'll assume the file content is sent in the body or as a form data.
         # For simplicity in this example, we'll try to read from form data.
         
-        file = None
-        filename = None
+        uploaded_files = []
+        errors = []
 
         # Try to get file from files collection (standard multipart/form-data)
         if req.files:
             for f in req.files.values():
-                file = f
-                filename = f.filename
-                break
-        
-        if not file:
+                try:
+                    file = f
+                    filename = f.filename
+                    
+                    # Check file size safely with chunked reading
+                    file_content = bytearray()
+                    chunk_size = 1024 * 1024 # 1MB chunks
+                    
+                    # Reset stream position just in case
+                    if hasattr(file.stream, 'seek'):
+                        file.stream.seek(0)
+
+                    while True:
+                        chunk = file.stream.read(chunk_size)
+                        if not chunk:
+                            break
+                        file_content.extend(chunk)
+                        if len(file_content) > max_bytes:
+                             errors.append(f"File {filename} too large. Maximum size is {max_mb}MB.")
+                             break
+                    
+                    if len(file_content) > max_bytes:
+                        continue
+
+                    # Connect to Blob Storage
+                    connect_str = os.getenv('BLOB_STORAGE_CONNECTION_STRING')
+                    blob_service_client = BlobServiceClient.from_connection_string(connect_str)
+                    container_name = "docs"
+                    
+                    # Create container if it doesn't exist
+                    container_client = blob_service_client.get_container_client(container_name)
+                    if not container_client.exists():
+                        container_client.create_container()
+
+                    # Upload file
+                    blob_client = container_client.get_blob_client(filename)
+                    blob_client.upload_blob(bytes(file_content), overwrite=True)
+                    uploaded_files.append(filename)
+
+                except Exception as e:
+                    errors.append(f"Error uploading {filename}: {str(e)}")
+
+        if not uploaded_files and not errors:
              return func.HttpResponse(
-                "Please pass a file in the request body",
+                "Please pass files in the request body",
                 status_code=400
             )
 
-        # Check file size safely with chunked reading
-        file_content = bytearray()
-        chunk_size = 1024 * 1024 # 1MB chunks
+        if errors:
+            return func.HttpResponse(
+                f"Uploaded: {', '.join(uploaded_files)}. Errors: {'; '.join(errors)}",
+                status_code=207 if uploaded_files else 400
+            )
 
-        while True:
-            chunk = file.stream.read(chunk_size)
-            if not chunk:
-                break
-            file_content.extend(chunk)
-            if len(file_content) > max_bytes:
-                 return func.HttpResponse(
-                    f"File too large. Maximum size is {max_mb}MB.",
-                    status_code=413
-                )
-
-        # Connect to Blob Storage
-        connect_str = os.getenv('BLOB_STORAGE_CONNECTION_STRING') #TODO: Managed identity...
-        blob_service_client = BlobServiceClient.from_connection_string(connect_str)
-        container_name = "docs"
-        
-        # Create container if it doesn't exist
-        container_client = blob_service_client.get_container_client(container_name)
-        if not container_client.exists():
-            container_client.create_container()
-
-        # Upload file
-        blob_client = container_client.get_blob_client(filename)
-        blob_client.upload_blob(bytes(file_content), overwrite=True)
-
-        return func.HttpResponse(f"File {filename} uploaded successfully.", status_code=200)
+        return func.HttpResponse(f"Files {', '.join(uploaded_files)} uploaded successfully.", status_code=200)
 
     except Exception as e:
         import traceback

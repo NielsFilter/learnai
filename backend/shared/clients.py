@@ -1,6 +1,7 @@
 import os
 from openai import AzureOpenAI
 from pymongo import MongoClient
+from azure.storage.blob import BlobServiceClient
 from azure.core.credentials import AzureKeyCredential
 from azure.ai.documentintelligence import DocumentIntelligenceClient
 
@@ -29,3 +30,9 @@ def get_mongo_client():
 def get_mongo_db():
     client = get_mongo_client()
     return client["learnai"]
+
+def get_blob_service_client():
+    connection_string = os.getenv("BLOB_STORAGE_CONNECTION_STRING")
+    if not connection_string:
+        raise ValueError("BLOB_STORAGE_CONNECTION_STRING must be set")
+    return BlobServiceClient.from_connection_string(connection_string)

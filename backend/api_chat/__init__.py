@@ -91,7 +91,7 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
     # We need to perform vector search. MongoDB Atlas Vector Search requires an aggregation pipeline.
     # Assuming the index is named "vector_index" and path is "vector".
     # We also filter by projectId in metadata.
-    
+
     pipeline = [
         {
             "$vectorSearch": {
@@ -109,22 +109,47 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
             "$project": {
                 "_id": 0,
                 "text": 1,
+                "metadata": 1,  # Add this for debugging
                 "score": { "$meta": "vectorSearchScore" }
             }
         }
     ]
-    
+
     try:
+        logging.info(f"Searching with project_id: {project_id}")
+        logging.info(f"Query vector length: {len(query_vector)}")
+        
         results = list(db.docs.aggregate(pipeline))
+        logging.info(f"Found {len(results)} results")
+        
+        if len(results) == 0:
+            # Try to diagnose
+            doc_count = db.docs.count_documents({"metadata.projectId": project_id})
+            logging.info(f"Documents with this projectId: {doc_count}")
+
+            # --- ADD THIS DEBUG BLOCK ---
+            if doc_count > 0:
+                sample_doc = db.docs.find_one({"metadata.projectId": project_id})
+                keys = sample_doc.keys()
+                logging.info(f"Document keys: {list(keys)}")
+                
+                if 'vector' in sample_doc:
+                     # Check if it's a list and has length
+                    vec_len = len(sample_doc['vector']) if isinstance(sample_doc['vector'], list) else "Not a list"
+                    logging.info(f"Vector field status: Present. Length: {vec_len}")
+                else:
+                    logging.info("CRITICAL: 'vector' field is MISSING from the document.")
+            # ----------------------------
+
+            if doc_count == 0:
+                return func.HttpResponse("No documents found for this project", status_code=404)
+        
     except Exception as e:
         logging.error(f"Error searching vectors: {e}")
-        # Fallback if vector search fails (e.g. index not ready), maybe just chat without context or fail?
-        # For now, let's log and proceed with empty context or fail.
-        # If index doesn't exist, this will fail.
-        return func.HttpResponse("Error searching documents. Ensure vector index is created.", status_code=500)
+        return func.HttpResponse(f"Error searching documents: {str(e)}", status_code=500)
 
     context = "\n\n".join([doc['text'] for doc in results])
-
+    logging.info(f"LLM Context being sent:\n{context}")
     # 7. Chat Completion
     system_prompt = """You are a helpful tutor for the LearnAI platform. 
     Your goal is to help students learn based ONLY on the provided context.
@@ -141,7 +166,7 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
     chat_deployment = os.getenv("AZURE_OPENAI_CHAT_DEPLOYMENT") # Need to ensure this env var is set
     if not chat_deployment:
          # Fallback to a default name or error
-         chat_deployment = "gpt-35-turbo" # Example
+         chat_deployment = "gpt-4o-mini" # Example
 
     try:
         completion = openai_client.chat.completions.create(
