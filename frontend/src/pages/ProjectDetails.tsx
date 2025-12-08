@@ -1,11 +1,12 @@
 import React, { useEffect, useState, useRef } from 'react';
+import ReactMarkdown from 'react-markdown';
 import { Layout } from '../components/Layout';
 import { apiRequest } from '../lib/api';
-import { useParams } from 'react-router-dom';
+import { useParams, Link } from 'react-router-dom';
 import { Button } from '../components/Button';
 import { Card } from '../components/Card';
 import { Input } from '../components/Input';
-import { Send, MessageSquare, FileQuestion, BookOpen } from 'lucide-react';
+import { Send, MessageSquare, FileQuestion, BookOpen, ChevronRight, ChevronDown } from 'lucide-react';
 
 interface Project {
     _id: string;
@@ -37,6 +38,7 @@ export const ProjectDetails: React.FC = () => {
     const [messages, setMessages] = useState<ChatMessage[]>([]);
     const [newMessage, setNewMessage] = useState('');
     const [sending, setSending] = useState(false);
+    const [expandedDocs, setExpandedDocs] = useState<Record<number, boolean>>({});
     const chatEndRef = useRef<HTMLDivElement>(null);
 
     // Quiz State
@@ -77,6 +79,14 @@ export const ProjectDetails: React.FC = () => {
 
         fetchProjectData();
     }, [id]);
+
+    useEffect(() => {
+        if (documents.length <= 1 && documents.length > 0) {
+            setExpandedDocs({ 0: true });
+        } else {
+            setExpandedDocs({});
+        }
+    }, [documents]);
 
     useEffect(() => {
         chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -159,45 +169,52 @@ export const ProjectDetails: React.FC = () => {
     return (
         <Layout>
             <div className="flex flex-col h-[calc(100vh-8rem)]">
-                <div className="mb-6 flex justify-between items-center">
-                    <div>
-                        <h1 className="text-2xl font-bold">{project.name}</h1>
-                        <p className="text-gray-500">{project.subject}</p>
+                <div className="mb-6">
+                    <div className="flex items-center gap-2 text-sm text-gray-500 mb-2">
+                        <Link to="/" className="hover:text-blue-600 transition-colors">Projects</Link>
+                        <ChevronRight className="w-4 h-4" />
+                        <span className="font-medium text-gray-900 dark:text-gray-100">{project.name}</span>
                     </div>
-                    <div className="flex gap-2 bg-gray-100 dark:bg-gray-800 p-1 rounded-lg">
-                        <button
-                            onClick={() => setActiveTab('overview')}
-                            className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${activeTab === 'overview'
-                                ? 'bg-white dark:bg-gray-700 shadow-sm text-blue-600 dark:text-blue-400'
-                                : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
-                                }`}
-                        >
-                            Overview
-                        </button>
-                        <button
-                            onClick={() => setActiveTab('chat')}
-                            className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${activeTab === 'chat'
-                                ? 'bg-white dark:bg-gray-700 shadow-sm text-blue-600 dark:text-blue-400'
-                                : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
-                                }`}
-                        >
-                            <div className="flex items-center gap-2">
-                                <MessageSquare className="w-4 h-4" />
-                                Chat
-                            </div>
-                        </button>
-                        <button
-                            onClick={() => setActiveTab('quiz')}
-                            className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${activeTab === 'quiz'
-                                ? 'bg-white dark:bg-gray-700 shadow-sm text-blue-600 dark:text-blue-400'
-                                : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
-                                }`}
-                        >
-                            <div className="flex items-center gap-2">
-                                <FileQuestion className="w-4 h-4" />
-                                Quiz
-                            </div>
-                        </button>
+                    <div className="flex justify-between items-center">
+                        <div>
+                            <h1 className="text-2xl font-bold">{project.name}</h1>
+                            <p className="text-gray-500">{project.subject}</p>
+                        </div>
+                        <div className="flex gap-2 bg-gray-100 dark:bg-gray-800 p-1 rounded-lg">
+                            <button
+                                onClick={() => setActiveTab('overview')}
+                                className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${activeTab === 'overview'
+                                    ? 'bg-white dark:bg-gray-700 shadow-sm text-blue-600 dark:text-blue-400'
+                                    : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
+                                    }`}
+                            >
+                                Overview
+                            </button>
+                            <button
+                                onClick={() => setActiveTab('chat')}
+                                className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${activeTab === 'chat'
+                                    ? 'bg-white dark:bg-gray-700 shadow-sm text-blue-600 dark:text-blue-400'
+                                    : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
+                                    }`}
+                            >
+                                <div className="flex items-center gap-2">
+                                    <MessageSquare className="w-4 h-4" />
+                                    Chat
+                                </div>
+                            </button>
+                            <button
+                                onClick={() => setActiveTab('quiz')}
+                                className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${activeTab === 'quiz'
+                                    ? 'bg-white dark:bg-gray-700 shadow-sm text-blue-600 dark:text-blue-400'
+                                    : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
+                                    }`}
+                            >
+                                <div className="flex items-center gap-2">
+                                    <FileQuestion className="w-4 h-4" />
+                                    Quiz
+                                </div>
+                            </button>
+                        </div>
                     </div>
                 </div>
 
@@ -215,34 +232,48 @@ export const ProjectDetails: React.FC = () => {
 
                                 <div className="space-y-4">
                                     {documents.map((doc, idx) => (
-                                        <div key={idx} className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
-                                            <div className="flex items-center gap-2 mb-2">
-                                                <div className="p-2 bg-blue-100 dark:bg-blue-900 rounded-lg">
-                                                    <BookOpen className="w-5 h-5 text-blue-600 dark:text-blue-300" />
-                                                </div>
-                                                <h3 className="font-bold text-lg">{doc.filename}</h3>
-                                            </div>
-                                            <div className="pl-11">
-                                                <h4 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-1">Summary</h4>
-                                                {doc.summary === "Summary generation failed." ? (
-                                                    <div className="mt-2">
-                                                        <p className="text-red-500 text-sm mb-2">Summary generation failed.</p>
-                                                        <Button
-                                                            size="sm"
-                                                            variant="secondary"
-                                                            onClick={() => handleRegenerateSummary(doc.filename)}
-                                                            disabled={doc.isRegenerating}
-                                                        >
-                                                            {doc.isRegenerating ? 'Regenerating...' : 'Regenerate Summary'}
-                                                        </Button>
+                                        <div key={idx} className="bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
+                                            <button
+                                                onClick={() => setExpandedDocs(prev => ({ ...prev, [idx]: !prev[idx] }))}
+                                                className="w-full flex items-center justify-between p-4 hover:bg-gray-100 dark:hover:bg-gray-750 transition-colors text-left"
+                                            >
+                                                <div className="flex items-center gap-3">
+                                                    <div className="p-2 bg-blue-100 dark:bg-blue-900 rounded-lg">
+                                                        <BookOpen className="w-5 h-5 text-blue-600 dark:text-blue-300" />
                                                     </div>
-                                                ) : (
-                                                    <div
-                                                        className="text-gray-700 dark:text-gray-300 text-sm leading-relaxed prose dark:prose-invert max-w-none"
-                                                        dangerouslySetInnerHTML={{ __html: doc.summary || "Summary not available." }}
-                                                    />
-                                                )}
-                                            </div>
+                                                    <h3 className="font-bold text-lg">{doc.filename}</h3>
+                                                </div>
+                                                <ChevronDown
+                                                    className={`w-5 h-5 text-gray-500 transition-transform duration-200 ${expandedDocs[idx] ? 'transform rotate-180' : ''}`}
+                                                />
+                                            </button>
+
+                                            {expandedDocs[idx] && (
+                                                <div className="px-4 pb-4 pl-14 animate-in slide-in-from-top-2 duration-200">
+                                                    <h4 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-2">Summary</h4>
+                                                    {doc.summary === "Summary generation failed." ? (
+                                                        <div className="mt-2">
+                                                            <p className="text-red-500 text-sm mb-2">Summary generation failed.</p>
+                                                            <Button
+                                                                size="sm"
+                                                                variant="secondary"
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    handleRegenerateSummary(doc.filename);
+                                                                }}
+                                                                disabled={doc.isRegenerating}
+                                                            >
+                                                                {doc.isRegenerating ? 'Regenerating...' : 'Regenerate Summary'}
+                                                            </Button>
+                                                        </div>
+                                                    ) : (
+                                                        <div
+                                                            className="text-gray-700 dark:text-gray-300 text-sm leading-relaxed prose dark:prose-invert max-w-none"
+                                                            dangerouslySetInnerHTML={{ __html: doc.summary || "Summary not available." }}
+                                                        />
+                                                    )}
+                                                </div>
+                                            )}
                                         </div>
                                     ))}
                                     {documents.length === 0 && (
@@ -286,10 +317,15 @@ export const ProjectDetails: React.FC = () => {
                                 {messages.map((msg, idx) => (
                                     <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                                         <div className={`max-w-[80%] rounded-lg px-4 py-2 ${msg.role === 'user'
-                                            ? 'bg-blue-600 text-white'
+                                            ? 'bg-blue-600 text-white prose-headings:text-white prose-p:text-white prose-strong:text-white prose-li:text-white'
                                             : 'bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-100'
                                             }`}>
-                                            <p className="whitespace-pre-wrap">{msg.content}</p>
+                                            <div className={`prose dark:prose-invert max-w-none text-sm break-words ${msg.role === 'user' ? 'dark:prose-invert-headings:text-white' : ''
+                                                }`}>
+                                                <ReactMarkdown>
+                                                    {msg.content}
+                                                </ReactMarkdown>
+                                            </div>
                                         </div>
                                     </div>
                                 ))}

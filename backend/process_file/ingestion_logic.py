@@ -96,7 +96,15 @@ def extract_text_from_pdf(file_stream: bytes) -> str:
         # Extract text from the result
         # We can also extract tables, selection marks, etc. if needed.
         # For now, we just want the full text content.
-        if result.content:
+        if result.pages:
+            logging.info(f"Document Intelligence found {len(result.pages)} pages.")
+            # Explicitly iterate over pages to ensure we get everything
+            full_text = []
+            for page in result.pages:
+                for line in page.lines:
+                    full_text.append(line.content)
+            return "\n".join(full_text)
+        elif result.content:
             return result.content
         return ""
 
