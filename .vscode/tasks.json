@@ -19,6 +19,23 @@
             }
         },
         {
+            "label": "func: host start debug",
+            "type": "shell",
+            "command": "func host start --language-worker -- \"-m debugpy --listen 127.0.0.1:9091 --wait-for-client\"",
+            "windows": {
+                "command": "${workspaceFolder}\\.venv\\Scripts\\activate ; func host start --language-worker -- \"-m debugpy --listen 127.0.0.1:9091 --wait-for-client\""
+            },
+            "problemMatcher": "$func-python-watch",
+            "isBackground": true,
+            "dependsOn": "pip install (functions)",
+            "options": {
+                "cwd": "${workspaceFolder}/backend",
+                "env": {
+                    "PYTHONPATH": "${workspaceFolder}\\.venv\\Lib\\site-packages"
+                }
+            }
+        },
+        {
             "label": "pip install (functions)",
             "type": "shell",
             "osx": {

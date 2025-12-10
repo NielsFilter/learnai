@@ -5,6 +5,7 @@ import os
 from datetime import datetime
 from ..shared.auth import verify_token
 from ..shared.clients import get_openai_client, get_mongo_db
+from ..shared.rag import perform_vector_search
 
 def main(req: func.HttpRequest) -> func.HttpResponse:
     logging.info('Python HTTP trigger function processed a chat request.')
@@ -37,6 +38,21 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
             
         return func.HttpResponse(
             json.dumps(history),
+            mimetype="application/json",
+            status_code=200
+        )
+
+    # 3. Handle DELETE (Clear History)
+    if req.method == 'DELETE':
+        project_id = req.params.get('projectId')
+        if not project_id:
+            return func.HttpResponse("projectId is required", status_code=400)
+        
+        db = get_mongo_db()
+        result = db.chat_history.delete_many({"projectId": project_id, "userId": uid})
+        
+        return func.HttpResponse(
+            json.dumps({"message": "Chat history cleared", "deletedCount": result.deleted_count}),
             mimetype="application/json",
             status_code=200
         )
@@ -75,77 +91,16 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
          return func.HttpResponse("I cannot answer that request.", status_code=400)
 
     # 5. RAG - Generate Embedding
-    openai_client = get_openai_client()
-    deployment = os.getenv("AZURE_OPENAI_EMBEDDING_DEPLOYMENT")
-    if not deployment:
-         return func.HttpResponse("Embedding deployment not configured", status_code=500)
-
+    # 5. RAG - Vector Search (Shared Logic)
     try:
-        response = openai_client.embeddings.create(input=[message], model=deployment)
-        query_vector = response.data[0].embedding
+        results = perform_vector_search(project_id, message)
+        
+        if not results:
+             logging.info("Vector search returned no results.")
+             # Fallback logic if needed, or just proceeds with empty context
+             
     except Exception as e:
-        logging.error(f"Error generating embedding: {e}")
-        return func.HttpResponse("Error generating embedding", status_code=500)
-
-    # 6. RAG - Vector Search
-    # We need to perform vector search. MongoDB Atlas Vector Search requires an aggregation pipeline.
-    # Assuming the index is named "vector_index" and path is "vector".
-    # We also filter by projectId in metadata.
-
-    pipeline = [
-        {
-            "$vectorSearch": {
-                "index": "vector_index",
-                "path": "vector",
-                "queryVector": query_vector,
-                "numCandidates": 100,
-                "limit": 5,
-                "filter": {
-                    "metadata.projectId": project_id
-                }
-            }
-        },
-        {
-            "$project": {
-                "_id": 0,
-                "text": 1,
-                "metadata": 1,  # Add this for debugging
-                "score": { "$meta": "vectorSearchScore" }
-            }
-        }
-    ]
-
-    try:
-        logging.info(f"Searching with project_id: {project_id}")
-        logging.info(f"Query vector length: {len(query_vector)}")
-        
-        results = list(db.docs.aggregate(pipeline))
-        logging.info(f"Found {len(results)} results")
-        
-        if len(results) == 0:
-            # Try to diagnose
-            doc_count = db.docs.count_documents({"metadata.projectId": project_id})
-            logging.info(f"Documents with this projectId: {doc_count}")
-
-            # --- ADD THIS DEBUG BLOCK ---
-            if doc_count > 0:
-                sample_doc = db.docs.find_one({"metadata.projectId": project_id})
-                keys = sample_doc.keys()
-                logging.info(f"Document keys: {list(keys)}")
-                
-                if 'vector' in sample_doc:
-                     # Check if it's a list and has length
-                    vec_len = len(sample_doc['vector']) if isinstance(sample_doc['vector'], list) else "Not a list"
-                    logging.info(f"Vector field status: Present. Length: {vec_len}")
-                else:
-                    logging.info("CRITICAL: 'vector' field is MISSING from the document.")
-            # ----------------------------
-
-            if doc_count == 0:
-                return func.HttpResponse("No documents found for this project", status_code=404)
-        
-    except Exception as e:
-        logging.error(f"Error searching vectors: {e}")
+        logging.error(f"Error in RAG process: {e}")
         return func.HttpResponse(f"Error searching documents: {str(e)}", status_code=500)
 
     context = "\n\n".join([doc['text'] for doc in results])

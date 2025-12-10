@@ -5,3 +5,6 @@ openai
 azure-ai-documentintelligence
 langchain-text-splitters
 firebase-admin
+requests
+debugpy
+elevenlabs

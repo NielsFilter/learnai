@@ -4,7 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { Sun, Moon } from 'lucide-react';
 
-export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+export const Layout: React.FC<{ children: React.ReactNode, headerContent?: React.ReactNode }> = ({ children, headerContent }) => {
     const { user, logout } = useAuth();
     const { theme, toggleTheme } = useTheme();
 
@@ -13,9 +13,12 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
             <nav className="bg-white dark:bg-gray-800 shadow-sm">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="flex justify-between h-16 items-center">
-                        <Link to="/" className="flex-shrink-0 font-bold text-xl text-blue-600 hover:text-blue-700 transition-colors">
-                            LearnAI
-                        </Link>
+                        <div className="flex items-center gap-6">
+                            <Link to="/" className="flex-shrink-0 font-bold text-xl text-blue-600 hover:text-blue-700 transition-colors">
+                                LearnAI
+                            </Link>
+                            {headerContent}
+                        </div>
                         <div className="flex items-center gap-4">
                             {user && (
                                 <>
@@ -38,7 +41,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
                     </div>
                 </div>
             </nav>
-            <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
                 {children}
             </main>
         </div>

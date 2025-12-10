@@ -6,6 +6,7 @@ from datetime import datetime
 from bson.objectid import ObjectId
 from ..shared.auth import verify_token
 from ..shared.clients import get_openai_client, get_mongo_db
+from ..shared.rag import perform_vector_search
 
 def main(req: func.HttpRequest) -> func.HttpResponse:
     logging.info('Python HTTP trigger function processed a quiz request.')
@@ -36,6 +37,7 @@ def generate_quiz(req, uid, db):
     try:
         req_body = req.get_json()
         project_id = req_body.get('projectId')
+        topic = req_body.get('topic')
     except ValueError:
         return func.HttpResponse("Invalid JSON", status_code=400)
 
@@ -47,16 +49,27 @@ def generate_quiz(req, uid, db):
     if not project:
         return func.HttpResponse("Project not found", status_code=404)
 
-    # Fetch context (limit to some reasonable amount of text)
-    # For simplicity, fetch all chunks for the project
-    docs = list(db.docs.find({"metadata.projectId": project_id}))
-    if not docs:
-        return func.HttpResponse("No documents found for this project", status_code=400)
-    
-    context = "\n\n".join([doc['text'] for doc in docs])
-    # Truncate if too long (approx check)
-    if len(context) > 10000:
-        context = context[:10000]
+    try:
+        if topic:
+            logging.info(f"Generating quiz for specific topic: {topic}")
+            search_query = topic
+        else:
+            logging.info("Generating surprise quiz (Surprise Me mode)")
+            search_query = generate_surprise_topic(db, project_id)
+            logging.info(f"Generated surprise query: {search_query}")
+        
+        # Use shared RAG
+        results = perform_vector_search(project_id, search_query)
+        context = "\n\n".join([doc['text'] for doc in results])
+        
+        if not context:
+             docs = list(db.docs.find({"metadata.projectId": project_id}).limit(10))
+             if not docs:
+                 return func.HttpResponse("No documents found for this project", status_code=400)
+             context = "\n\n".join([doc['text'] for doc in docs])
+             
+    except Exception as e:
+        return func.HttpResponse(f"Error preparing quiz context: {str(e)}", status_code=500)
 
     # Generate Quiz
     openai_client = get_openai_client()
@@ -80,18 +93,15 @@ def generate_quiz(req, uid, db):
             model=chat_deployment,
             messages=[{"role": "user", "content": prompt}],
             temperature=0.7,
-            response_format={ "type": "json_object" } # If supported, or just parse text
+            response_format={ "type": "json_object" }
         )
         content = completion.choices[0].message.content
-        # Ensure it's valid JSON
         quiz_data = json.loads(content)
-        # Handle if it's wrapped in a key like "questions"
         if "questions" in quiz_data:
             questions = quiz_data["questions"]
         elif isinstance(quiz_data, list):
             questions = quiz_data
         else:
-             # Try to find a list in values
              found = False
              for val in quiz_data.values():
                  if isinstance(val, list):
@@ -115,24 +125,45 @@ def generate_quiz(req, uid, db):
     result = db.quizzes.insert_one(quiz)
     quiz_id = str(result.inserted_id)
 
-    # Return to user (hide correct answers if desired, but for simplicity send everything and frontend hides it? 
-    # Or better: strip correct answers. But then submit needs to reference quizId)
-    
-    client_questions = []
-    for q in questions:
-        client_questions.append({
-            "question": q["question"],
-            "options": q["options"]
-        })
-
     return func.HttpResponse(
         json.dumps({
             "quizId": quiz_id,
-            "questions": client_questions
+            "questions": questions
         }),
         mimetype="application/json",
         status_code=200
     )
+
+def generate_surprise_topic(db, project_id):
+    docs = list(db.docs.find({"metadata.projectId": project_id}))
+    if not docs:
+        return "General concepts"
+    
+    summary_text = "\n".join([d.get('summary', '') for d in docs])
+    if len(summary_text) > 5000:
+        summary_text = summary_text[:5000]
+
+    openai_client = get_openai_client()
+    chat_deployment = os.getenv("AZURE_OPENAI_CHAT_DEPLOYMENT") or "gpt-35-turbo"
+    
+    prompt = f"""
+    Based on the following document summaries, generate a search query that covers 5 diverse and interesting topics found in the text.
+    Return ONLY the search query string, nothing else.
+    
+    Summaries:
+    {summary_text}
+    """
+    
+    try:
+        completion = openai_client.chat.completions.create(
+            model=chat_deployment,
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.7
+        )
+        return completion.choices[0].message.content.strip()
+    except Exception as e:
+        logging.error(f"Error generating surprise topic: {e}")
+        return "Key concepts from the project"
 
 def submit_quiz(req, uid, db):
     try:

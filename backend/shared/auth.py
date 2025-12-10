@@ -26,7 +26,7 @@ def initialize_firebase():
 def verify_token(id_token: str):
     initialize_firebase()
     try:
-        decoded_token = auth.verify_id_token(id_token)
+        decoded_token = auth.verify_id_token(id_token, clock_skew_seconds=5)
         return decoded_token
     except Exception as e:
         logging.error(f"Token verification failed: {e}")
