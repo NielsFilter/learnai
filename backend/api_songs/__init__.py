@@ -4,26 +4,18 @@ import json
 import os
 from datetime import datetime, timedelta
 from bson.objectid import ObjectId
-from ..shared.auth import verify_token
+from bson.objectid import ObjectId
+from ..shared.auth import authenticate_request
 from ..shared.clients import get_openai_client, get_mongo_db
 from ..shared.rag import perform_vector_search
 from azure.storage.blob import BlobServiceClient, generate_blob_sas, BlobSasPermissions
 from elevenlabs.client import ElevenLabs
 
+@authenticate_request
 def main(req: func.HttpRequest) -> func.HttpResponse:
     logging.info('Python HTTP trigger function processed a songs request.')
-
-    # 1. Verify Token
-    auth_header = req.headers.get('Authorization')
-    if not auth_header or not auth_header.startswith('Bearer '):
-        return func.HttpResponse("Unauthorized", status_code=401)
     
-    token = auth_header.split(' ')[1]
-    try:
-        user = verify_token(token)
-        uid = user['uid']
-    except ValueError:
-        return func.HttpResponse("Invalid Token", status_code=401)
+    uid = req.user['uid']
 
     db = get_mongo_db()
     

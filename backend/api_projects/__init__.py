@@ -5,22 +5,14 @@ import os
 from pymongo import MongoClient
 from bson import ObjectId
 from datetime import datetime
-from ..shared.auth import verify_token
+from datetime import datetime
+from ..shared.auth import authenticate_request
 
+@authenticate_request
 def main(req: func.HttpRequest) -> func.HttpResponse:
     logging.info('Python HTTP trigger function processed a request.')
-
-    # 1. Verify Token
-    auth_header = req.headers.get('Authorization')
-    if not auth_header or not auth_header.startswith('Bearer '):
-        return func.HttpResponse("Unauthorized", status_code=401)
     
-    token = auth_header.split(' ')[1]
-    try:
-        user = verify_token(token)
-        uid = user['uid']
-    except ValueError:
-        return func.HttpResponse("Invalid Token", status_code=401)
+    uid = req.user['uid']
 
     # 2. Connect to DB
     connection_string = os.getenv("MONGO_DB_CONNECTION_STRING")
