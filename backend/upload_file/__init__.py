@@ -7,7 +7,7 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
     logging.info('Python HTTP trigger function processed a request.....')
 
     try:
-        max_mb = int(os.getenv("MAX_FILE_SIZE_MB", 4))
+        max_mb = int(os.getenv("MAX_FILE_SIZE_MB", 20))
         max_bytes = max_mb * 1024 * 1024
 
         # 1. Early check using Content-Length header

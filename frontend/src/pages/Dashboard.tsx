@@ -5,7 +5,7 @@ import { Button } from '../components/Button';
 import { apiRequest } from '../lib/api';
 import { useNavigate } from 'react-router-dom';
 import { Plus, BookOpen, Trash2 } from 'lucide-react';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { CreateProjectModal } from '../components/CreateProjectModal';
 import { ConfirmModal } from '../components/ConfirmModal';
 
@@ -73,6 +73,32 @@ export const Dashboard: React.FC = () => {
         fetchData();
     }, []);
 
+    // Process data for the chart
+    const { chartData, subjects } = React.useMemo(() => {
+        if (!stats?.history || !projects.length) return { chartData: [], subjects: [] };
+
+        const subjectSet = new Set<string>();
+        const data = stats.history.map(entry => {
+            const project = projects.find(p => p._id === entry.projectId);
+            const subject = project ? project.subject : 'Other';
+            subjectSet.add(subject);
+
+            return {
+                submittedAt: entry.submittedAt,
+                [subject]: Math.round((entry.score / entry.total) * 100), // Calculate percentage
+                originalScore: entry.score,
+                total: entry.total,
+                quizId: entry.quizId // Keep track for uniqueness if needed
+            };
+        }); /* .sort((a, b) => new Date(a.submittedAt).getTime() - new Date(b.submittedAt).getTime()) */
+        // Backend already sorts by submittedAt, but safe to leave as is or re-sort if needed. 
+        // Backend sort is: { "$sort": { "submittedAt": 1 } }
+
+        return { chartData: data, subjects: Array.from(subjectSet) };
+    }, [stats, projects]);
+
+    const colors = ['#2563eb', '#7c3aed', '#db2777', '#ea580c', '#16a34a', '#0891b2', '#4f46e5'];
+
     if (loading) {
         return <Layout><div>Loading...</div></Layout>;
     }
@@ -98,12 +124,29 @@ export const Dashboard: React.FC = () => {
                         <Card className="h-64">
                             <h3 className="text-sm font-medium text-gray-500 mb-4">Performance History</h3>
                             <ResponsiveContainer width="100%" height="100%">
-                                <LineChart data={stats?.history}>
+                                <LineChart data={chartData}>
                                     <CartesianGrid strokeDasharray="3 3" />
-                                    <XAxis dataKey="submittedAt" tickFormatter={(date) => new Date(date).toLocaleDateString()} />
-                                    <YAxis />
-                                    <Tooltip labelFormatter={(date) => new Date(date).toLocaleString()} />
-                                    <Line type="monotone" dataKey="score" stroke="#2563eb" strokeWidth={2} />
+                                    <XAxis
+                                        dataKey="submittedAt"
+                                        tickFormatter={(date) => new Date(date).toLocaleDateString()}
+                                    />
+                                    <YAxis domain={[0, 100]} />
+                                    <Tooltip
+                                        labelFormatter={(date) => new Date(date).toLocaleString()}
+                                        formatter={(value: number, name: string) => [`${value}%`, name]}
+                                    />
+                                    <Legend />
+                                    {subjects.map((subject, index) => (
+                                        <Line
+                                            key={subject}
+                                            connectNulls
+                                            type="monotone"
+                                            dataKey={subject}
+                                            stroke={colors[index % colors.length]}
+                                            strokeWidth={2}
+                                            activeDot={{ r: 8 }}
+                                        />
+                                    ))}
                                 </LineChart>
                             </ResponsiveContainer>
                         </Card>

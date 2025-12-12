@@ -83,7 +83,8 @@ def generate_lyrics(req, uid, db):
         # Generate Lyrics
         openai_client = get_openai_client()
         llm_prompt = f"""
-        Write catchy song lyrics based on the following context.
+        Write catchy song lyrics based on the following context. Keep the lyrics short and punchy. 2 short verses and a short chorus.
+        The lyrics are for learning purposes, so the lyrics must be meaningful to the content and help them learn key concepts
         Topic: {prompt_text}
         Genre: {genre}
         
@@ -108,8 +109,8 @@ def create_song(req, uid, db):
         project_id = req_body.get('projectId')
         title = req_body.get('title')
         genre = req_body.get('genre', 'Pop')
-        prompt_text = req_body.get('prompt')
-        provided_lyrics = req_body.get('lyrics') 
+        lyrics = req_body.get('lyrics')
+        duration = req_body.get('duration', 30) * 1000
     except ValueError:
         return func.HttpResponse("Invalid JSON", status_code=400)
 
@@ -117,12 +118,13 @@ def create_song(req, uid, db):
         return func.HttpResponse("projectId and title are required", status_code=400)
 
     # 1. Prepare Song Prompt
-    lyrics_to_save = provided_lyrics or ""
+    if not lyrics:
+        return func.HttpResponse("No lyrics were provided", status_code=500)
     
-    # Construct a rich prompt for ElevenLabs
-    # ElevenLabs Soundscape/Music generally preferred detailed descriptions
-    input_desc = prompt_text or title
-    final_prompt = f"Genre: {genre}. {input_desc}. Mood: {genre}. Tempo: Dynamic."
+    
+    # Construct a style description for 'text' argument (limited to 450 chars)
+    # Since we pass lyrics separately, 'text' describes the music style.
+    final_prompt = f"Genre: {genre}. A high quality song with clear vocals. No music intro, start with lyrics right away. Mood: {genre}. Tempo: Dynamic. Lyrics: '{lyrics}'"
     
     # 2. Call ElevenLabs
     api_key = os.getenv("ELEVENLABS_API_KEY")
@@ -130,40 +132,11 @@ def create_song(req, uid, db):
         return func.HttpResponse("ELEVENLABS_API_KEY not configured", status_code=500)
 
     try:
+        
         client = ElevenLabs(api_key=api_key)
-        
-        # Using text_to_sound_effects as a reliable proxy if music is not exposed, 
-        # BUT relying on the user's explicit link which utilized 'elevenlabs.music.compose' which likely maps 
-        # to the same underlying generation engine or a specialized one. 
-        # We try to access client.music.compose if available, else fallback? 
-        # Actually checking the SDK source is hard here.
-        # But commonly SDKs for new features might be 'client.music.compose' or 'client.sound_generation.create'.
-        # I will stick to what the user's link documentation claimed: `elevenlabs.music.compose(...)` 
-        # WAIT, `elevenlabs-2.26.1` likely implies modern Client structure.
-        # If `client.music` property exists, use it.
-        # Since I cannot check at runtime easily without potentially crashing, 
-        # I will wrap it in a try/except or just use `text_to_sound_effects` which is safer for "generating audio from text".
-        # However, `text_to_sound_effects` is usually short duration (max 11 sec?). Music might be longer.
-        # The quickstart used `music_length_ms`.
-        # I will assume `client.text_to_sound_effects` is NOT creating music tracks.
-        # I'll try to use `client.music.generate` or `client.music.compose`. 
-        # Let's write code that assumes `client.music` exists, but if not catches AttributeError.
-        
-        # Actually, let's just assume the user is right and the link is correct.
-        # `elevenlabs.music.compose` was likely `client.text_to_sound_effects` in older versions?
-        # A quick check on PyPI or docs would solve this, but I can't surf freely.
-        # I'll use `text_to_sound_effects` because it is STABLE and creates audio from text description.
-        # UPDATE: The "Music Quickstart" link specifically mentions "text to sound effects" as the old way? 
-        # No, it's a new "Music" capability.
-        # I'll stick to `client.text_to_sound_effects.convert` for safety as it definitely exists in 2.x SDKs 
-        # and often "Sound Effects" model can generate short musical clips if prompted "Song".
-        # If the user definitely wants the "Music" model, it typically requires specific endpoint.
-        # I'll use `text_to_sound_effects` to be safe against SDK version mismatches for beta features.
-        
-        audio_generator = client.text_to_sound_effects.convert(
-            text=final_prompt,
-            duration_seconds=15, # Start with short clips to save credits/latency
-            prompt_influence=0.5
+        audio_generator = client.music.compose(
+            prompt=final_prompt,
+            music_length_ms=float(duration)
         )
         
         audio_bytes = b"".join(audio_generator)
@@ -205,8 +178,7 @@ def create_song(req, uid, db):
             "userId": uid,
             "title": title,
             "genre": genre,
-            "originalPrompt": prompt_text,
-            "lyrics": lyrics_to_save,
+            "lyrics": lyrics,
             "audioUrl": audio_url,
             "status": "completed",
             "createdAt": datetime.utcnow().isoformat()

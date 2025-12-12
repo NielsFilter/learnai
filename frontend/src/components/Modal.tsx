@@ -44,7 +44,7 @@ export const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, 
                     <X className="w-5 h-5" />
                 </button>
 
-                {title && <h2 className="text-xl font-bold mb-4 pr-8">{title}</h2>}
+                {title && <h2 className="text-xl font-bold mb-4 pr-8 text-gray-900 dark:text-white">{title}</h2>}
 
                 {children}
             </div>

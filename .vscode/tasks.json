@@ -23,7 +23,7 @@
             "type": "shell",
             "command": "func host start --language-worker -- \"-m debugpy --listen 127.0.0.1:9091 --wait-for-client\"",
             "windows": {
-                "command": "${workspaceFolder}\\.venv\\Scripts\\activate ; func host start --language-worker -- \"-m debugpy --listen 127.0.0.1:9091 --wait-for-client\""
+                "command": "${workspaceFolder}\\.venv\\Scripts\\activate ; func host start --language-worker -- '-m debugpy --listen 127.0.0.1:9091 --wait-for-client'"
             },
             "problemMatcher": "$func-python-watch",
             "isBackground": true,

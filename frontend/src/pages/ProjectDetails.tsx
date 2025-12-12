@@ -7,7 +7,7 @@ import { Button } from '../components/Button';
 import { Card } from '../components/Card';
 import { Modal } from '../components/Modal';
 import { Input } from '../components/Input';
-import { Send, MessageSquare, FileQuestion, BookOpen, ChevronRight, ChevronDown, Trash2, Music, Sparkles } from 'lucide-react';
+import { Send, MessageSquare, FileQuestion, BookOpen, ChevronRight, ChevronDown, Trash2, Music, Sparkles, AlertCircle } from 'lucide-react';
 
 interface Project {
     _id: string;
@@ -33,6 +33,7 @@ interface Song {
     title: string;
     genre: string;
     lyrics?: string;
+    originalPrompt?: string;
     audioUrl?: string; // If null, check status?
     status: 'created' | 'pending' | 'completed';
     createdAt: string;
@@ -73,16 +74,22 @@ export const ProjectDetails: React.FC = () => {
     const [songForm, setSongForm] = useState({
         title: '',
         genre: 'Pop',
-        prompt: '',
-        lyrics: ''
+        lyrics: '',
+        duration: 30
     });
+
+    // Lyrics Generation State
     const [lyricsPanelOpen, setLyricsPanelOpen] = useState(false);
     const [lyricsPrompt, setLyricsPrompt] = useState('');
     const [generatingLyrics, setGeneratingLyrics] = useState(false);
+    const [expandedSongLyrics, setExpandedSongLyrics] = useState<Record<string, boolean>>({});
+
 
     // Error Handling State
     const [showErrorModal, setShowErrorModal] = useState(false);
     const [errorMessage, setErrorMessage] = useState('');
+    const [clearingChat, setClearingChat] = useState(false);
+    const [deletingSongId, setDeletingSongId] = useState<string | null>(null);
 
     useEffect(() => {
         const fetchProjectData = async () => {
@@ -146,13 +153,17 @@ export const ProjectDetails: React.FC = () => {
                 genre: songForm.genre
             });
             setSongForm(prev => ({ ...prev, lyrics: response.lyrics }));
-            setLyricsPanelOpen(false); // Optionally keep open? User preference. Closing for now.
+            setLyricsPanelOpen(false);
         } catch (error) {
             console.error('Failed to generate lyrics:', error);
+            setErrorMessage('Failed to generate lyrics.');
+            setShowErrorModal(true);
         } finally {
             setGeneratingLyrics(false);
         }
     };
+
+
 
     const handleCreateSong = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -161,13 +172,16 @@ export const ProjectDetails: React.FC = () => {
         try {
             const newSong = await apiRequest('/songs', 'POST', {
                 projectId: id,
-                ...songForm
+                title: songForm.title,
+                genre: songForm.genre,
+                lyrics: songForm.lyrics,
+                duration: songForm.duration
             });
             setSongs(prev => [newSong, ...prev]);
-            setSongForm(prev => ({ ...prev, title: '', prompt: '', lyrics: '' }));
+            setSongForm(prev => ({ ...prev, title: '', lyrics: '' }));
         } catch (error) {
             console.error('Failed to create song:', error);
-            setErrorMessage('Failed to generate song. Ensure MCP server is running.');
+            setErrorMessage('Failed to generate song. Please try again.');
             setShowErrorModal(true);
         } finally {
             setGeneratingSong(false);
@@ -176,11 +190,14 @@ export const ProjectDetails: React.FC = () => {
 
     const handleDeleteSong = async (songId: string) => {
         if (!confirm('Are you sure you want to delete this song?')) return;
+        setDeletingSongId(songId);
         try {
             await apiRequest(`/songs?songId=${songId}`, 'DELETE');
             setSongs(prev => prev.filter(s => s._id !== songId));
         } catch (error) {
             console.error('Failed to delete song:', error);
+        } finally {
+            setDeletingSongId(null);
         }
     };
 
@@ -209,12 +226,15 @@ export const ProjectDetails: React.FC = () => {
 
     const confirmClearChat = async () => {
         if (!id) return;
+        setClearingChat(true);
         try {
             await apiRequest(`/chat?projectId=${id}`, 'DELETE');
             setMessages([]);
             setShowClearChatModal(false);
         } catch (error) {
             console.error('Failed to clear chat:', error);
+        } finally {
+            setClearingChat(false);
         }
     };
 
@@ -458,13 +478,15 @@ export const ProjectDetails: React.FC = () => {
                                             }}
                                             className="flex gap-2"
                                         >
-                                            <Input
-                                                value={newMessage}
-                                                onChange={(e) => setNewMessage(e.target.value)}
-                                                placeholder="Ask a question..."
-                                                className="flex-1 w-full"
-                                                disabled={sending}
-                                            />
+                                            <div className="flex-1">
+                                                <Input
+                                                    value={newMessage}
+                                                    onChange={(e) => setNewMessage(e.target.value)}
+                                                    placeholder="Ask a question..."
+                                                    className="flex-1 w-full"
+                                                    disabled={sending}
+                                                />
+                                            </div>
                                             <Button type="submit" disabled={sending || !newMessage.trim()}>
                                                 <Send className="w-5 h-5" />
                                             </Button>
@@ -523,13 +545,15 @@ export const ProjectDetails: React.FC = () => {
                                     </div>
                                     <div className="p-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
                                         <form onSubmit={handleSendMessage} className="flex gap-2">
-                                            <Input
-                                                value={newMessage}
-                                                onChange={(e) => setNewMessage(e.target.value)}
-                                                placeholder="Ask a question..."
-                                                className="flex-1"
-                                                disabled={sending}
-                                            />
+                                            <div className="flex-1">
+                                                <Input
+                                                    value={newMessage}
+                                                    onChange={(e) => setNewMessage(e.target.value)}
+                                                    placeholder="Ask a question..."
+                                                    className="flex-1"
+                                                    disabled={sending}
+                                                />
+                                            </div>
                                             <Button type="submit" disabled={sending || !newMessage.trim()}>
                                                 <Send className="w-5 h-5" />
                                             </Button>
@@ -583,7 +607,7 @@ export const ProjectDetails: React.FC = () => {
                                                     className="w-full"
                                                     variant="secondary"
                                                 >
-                                                    {generatingQuiz && !quizTopic ? 'Creating lucky packet...' : 'Surprise Me'}
+                                                    {generatingQuiz && !quizTopic ? 'Opening lucky packet...' : 'Surprise Me'}
                                                 </Button>
                                             </div>
                                         </div>
@@ -727,7 +751,7 @@ export const ProjectDetails: React.FC = () => {
                                             <select
                                                 value={songForm.genre}
                                                 onChange={(e) => setSongForm({ ...songForm, genre: e.target.value })}
-                                                className="w-full rounded-xl border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 focus:ring-2 focus:ring-purple-500 transition-all"
+                                                className="w-full rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 focus:ring-2 focus:ring-purple-500 transition-all p-3"
                                             >
                                                 <option value="Pop">Pop</option>
                                                 <option value="Rock">Rock</option>
@@ -740,34 +764,38 @@ export const ProjectDetails: React.FC = () => {
                                         </div>
 
                                         <div>
-                                            <label className="block text-sm font-medium mb-1">Prompt / Topic (for Music)</label>
-                                            <textarea
-                                                value={songForm.prompt}
-                                                onChange={(e) => setSongForm({ ...songForm, prompt: e.target.value })}
-                                                className="w-full rounded-xl border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 focus:ring-2 focus:ring-purple-500 min-h-[80px] p-3 transition-all"
-                                                placeholder="Describe the musical style or mood..."
-                                                required
-                                            />
-                                        </div>
-                                        <div>
-                                            <div className="flex justify-between items-center mb-1">
-                                                <label className="block text-sm font-medium">Lyrics</label>
-                                                <button
-                                                    type="button"
-                                                    onClick={() => setLyricsPanelOpen(true)}
-                                                    className="text-xs text-purple-600 hover:text-purple-700 font-medium flex items-center gap-1"
-                                                >
-                                                    <Sparkles className="w-3 h-3" />
-                                                    Help me generate lyrics
-                                                </button>
-                                            </div>
+                                            <label className="block text-sm font-medium mb-1">Lyrics</label>
                                             <textarea
                                                 value={songForm.lyrics}
                                                 onChange={(e) => setSongForm({ ...songForm, lyrics: e.target.value })}
-                                                className="w-full rounded-xl border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 focus:ring-2 focus:ring-purple-500 min-h-[150px] p-3 transition-all font-mono text-sm"
-                                                placeholder="Enter your lyrics here..."
+                                                className="w-full rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 focus:ring-2 focus:ring-purple-500 min-h-[120px] p-3 transition-all font-mono text-sm"
+                                                placeholder="Add your song lyrics here..."
+                                                required
                                             />
+                                            <button
+                                                type="button"
+                                                onClick={() => setLyricsPanelOpen(true)}
+                                                className="mt-2 text-sm text-purple-600 hover:text-purple-700 font-medium flex items-center gap-1"
+                                            >
+                                                <Sparkles className="w-4 h-4" />
+                                                Help me generate lyrics
+                                            </button>
                                         </div>
+
+                                        <div>
+                                            <label className="block text-sm font-medium mb-1">Duration (Seconds)</label>
+                                            <select
+                                                value={songForm.duration}
+                                                onChange={(e) => setSongForm({ ...songForm, duration: Number(e.target.value) })}
+                                                className="w-full rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 focus:ring-2 focus:ring-purple-500 transition-all p-3"
+                                            >
+                                                <option value={15}>15 Seconds</option>
+                                                <option value={30}>30 Seconds</option>
+                                                <option value={45}>45 Seconds</option>
+                                                <option value={60}>60 Seconds</option>
+                                            </select>
+                                        </div>
+
                                         <Button
                                             type="submit"
                                             className="w-full bg-purple-600 hover:bg-purple-700 text-white"
@@ -814,11 +842,28 @@ export const ProjectDetails: React.FC = () => {
                                                 </div>
                                                 <button
                                                     onClick={() => handleDeleteSong(song._id)}
-                                                    className="text-gray-400 hover:text-red-500 transition-colors p-1"
+                                                    className="text-gray-400 hover:text-red-500 transition-colors p-1 disabled:opacity-50 disabled:cursor-not-allowed"
                                                     title="Delete Song"
+                                                    disabled={deletingSongId === song._id}
                                                 >
                                                     <Trash2 className="w-5 h-5" />
                                                 </button>
+                                            </div>
+
+                                            <div className="mt-3 border-t border-gray-100 dark:border-gray-700 pt-3">
+                                                <button
+                                                    onClick={() => setExpandedSongLyrics(prev => ({ ...prev, [song._id]: !prev[song._id] }))}
+                                                    className="flex items-center gap-1 text-xs font-medium text-gray-500 hover:text-purple-600 dark:hover:text-purple-400 transition-colors"
+                                                >
+                                                    <ChevronRight className={`w-4 h-4 transition-transform duration-200 ${expandedSongLyrics[song._id] ? 'rotate-90' : ''}`} />
+                                                    {expandedSongLyrics[song._id] ? 'Hide Lyrics' : 'Show Lyrics'}
+                                                </button>
+
+                                                {expandedSongLyrics[song._id] && (
+                                                    <div className="mt-2 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg text-sm font-mono whitespace-pre-wrap text-gray-700 dark:text-gray-300 animate-in slide-in-from-top-1 fade-in duration-200">
+                                                        {song.originalPrompt || "No lyrics available."}
+                                                    </div>
+                                                )}
                                             </div>
                                         </Card>
                                     ))
@@ -829,6 +874,8 @@ export const ProjectDetails: React.FC = () => {
 
                 </div>
             </Layout>
+
+
 
 
             <Modal
@@ -843,8 +890,8 @@ export const ProjectDetails: React.FC = () => {
                     <textarea
                         value={lyricsPrompt}
                         onChange={(e) => setLyricsPrompt(e.target.value)}
-                        className="w-full rounded-xl border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:ring-2 focus:ring-purple-500 min-h-[120px] p-3 transition-all"
-                        placeholder="E.g., A song about the French Revolution focusing on key dates..."
+                        className="w-full rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:ring-2 focus:ring-purple-500 min-h-[120px] p-3 transition-all"
+                        placeholder="E.g., A song about the French Revolution..."
                     />
                     <div className="flex justify-end gap-3 pt-2">
                         <Button
@@ -883,8 +930,9 @@ export const ProjectDetails: React.FC = () => {
                         <Button
                             variant="danger"
                             onClick={confirmClearChat}
+                            disabled={clearingChat}
                         >
-                            Delete
+                            {clearingChat ? 'Deleting...' : 'Delete'}
                         </Button>
                     </div>
                 </div>
@@ -897,9 +945,10 @@ export const ProjectDetails: React.FC = () => {
                 title="Error"
             >
                 <div className="space-y-4">
-                    <p className="text-gray-600 dark:text-gray-300">
-                        {errorMessage}
-                    </p>
+                    <div className="flex items-center gap-3 text-gray-600 dark:text-gray-300">
+                        <AlertCircle className="w-6 h-6 text-red-500" />
+                        <p>{errorMessage}</p>
+                    </div>
                     <div className="flex justify-end pt-2">
                         <Button
                             onClick={() => setShowErrorModal(false)}
