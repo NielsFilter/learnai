@@ -125,7 +125,7 @@ export const Dashboard: React.FC = () => {
                             </Card>
                         </div>
 
-                        <Card className="h-80 mb-12">
+                        <Card className="h-80 mb-2 pb-12">
                             <h3 className="text-sm font-medium text-gray-400 mb-6">Performance History</h3>
                             <ResponsiveContainer width="100%" height="100%">
                                 <LineChart data={chartData}>
@@ -153,7 +153,10 @@ export const Dashboard: React.FC = () => {
                                         labelFormatter={(date) => new Date(date).toLocaleString()}
                                         formatter={(value: number, name: string) => [`${value}%`, name]}
                                     />
-                                    <Legend wrapperStyle={{ paddingTop: '20px' }} />
+                                    <Legend
+                                        wrapperStyle={{ paddingTop: '0' }}
+                                        formatter={(value) => <span className="text-gray-300 font-medium">{value}</span>}
+                                    />
                                     {subjects.map((subject, index) => (
                                         <Line
                                             key={subject}
