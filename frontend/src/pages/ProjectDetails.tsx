@@ -733,7 +733,7 @@ export const ProjectDetails: React.FC = () => {
                             <div className="lg:col-span-1">
                                 <Card className="p-6 sticky top-6">
                                     <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
-                                        <Music className="w-5 h-5 text-purple-500" />
+                                        <Music className="w-5 h-5 text-blue-600" />
                                         Create New Song
                                     </h2>
                                     <form onSubmit={handleCreateSong} className="space-y-4">
@@ -751,7 +751,7 @@ export const ProjectDetails: React.FC = () => {
                                             <select
                                                 value={songForm.genre}
                                                 onChange={(e) => setSongForm({ ...songForm, genre: e.target.value })}
-                                                className="w-full rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 focus:ring-2 focus:ring-purple-500 transition-all p-3"
+                                                className="w-full rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 focus:ring-2 focus:ring-blue-500 transition-all p-3"
                                             >
                                                 <option value="Pop">Pop</option>
                                                 <option value="Rock">Rock</option>
@@ -768,14 +768,14 @@ export const ProjectDetails: React.FC = () => {
                                             <textarea
                                                 value={songForm.lyrics}
                                                 onChange={(e) => setSongForm({ ...songForm, lyrics: e.target.value })}
-                                                className="w-full rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 focus:ring-2 focus:ring-purple-500 min-h-[120px] p-3 transition-all font-mono text-sm"
+                                                className="w-full rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 focus:ring-2 focus:ring-blue-500 min-h-[120px] p-3 transition-all font-mono text-sm"
                                                 placeholder="Add your song lyrics here..."
                                                 required
                                             />
                                             <button
                                                 type="button"
                                                 onClick={() => setLyricsPanelOpen(true)}
-                                                className="mt-2 text-sm text-purple-600 hover:text-purple-700 font-medium flex items-center gap-1"
+                                                className="mt-2 text-sm text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1"
                                             >
                                                 <Sparkles className="w-4 h-4" />
                                                 Help me generate lyrics
@@ -787,7 +787,7 @@ export const ProjectDetails: React.FC = () => {
                                             <select
                                                 value={songForm.duration}
                                                 onChange={(e) => setSongForm({ ...songForm, duration: Number(e.target.value) })}
-                                                className="w-full rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 focus:ring-2 focus:ring-purple-500 transition-all p-3"
+                                                className="w-full rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 focus:ring-2 focus:ring-blue-500 transition-all p-3"
                                             >
                                                 <option value={15}>15 Seconds</option>
                                                 <option value={30}>30 Seconds</option>
@@ -798,7 +798,7 @@ export const ProjectDetails: React.FC = () => {
 
                                         <Button
                                             type="submit"
-                                            className="w-full bg-purple-600 hover:bg-purple-700 text-white"
+                                            className="w-full bg-blue-600 hover:bg-blue-700 text-white"
                                             disabled={generatingSong}
                                         >
                                             {generatingSong ? 'Creating Magic...' : 'Generate Song'}
@@ -853,7 +853,7 @@ export const ProjectDetails: React.FC = () => {
                                             <div className="mt-3 border-t border-gray-100 dark:border-gray-700 pt-3">
                                                 <button
                                                     onClick={() => setExpandedSongLyrics(prev => ({ ...prev, [song._id]: !prev[song._id] }))}
-                                                    className="flex items-center gap-1 text-xs font-medium text-gray-500 hover:text-purple-600 dark:hover:text-purple-400 transition-colors"
+                                                    className="flex items-center gap-1 text-xs font-medium text-gray-500 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
                                                 >
                                                     <ChevronRight className={`w-4 h-4 transition-transform duration-200 ${expandedSongLyrics[song._id] ? 'rotate-90' : ''}`} />
                                                     {expandedSongLyrics[song._id] ? 'Hide Lyrics' : 'Show Lyrics'}
@@ -890,7 +890,7 @@ export const ProjectDetails: React.FC = () => {
                     <textarea
                         value={lyricsPrompt}
                         onChange={(e) => setLyricsPrompt(e.target.value)}
-                        className="w-full rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:ring-2 focus:ring-purple-500 min-h-[120px] p-3 transition-all"
+                        className="w-full rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:ring-2 focus:ring-blue-500 min-h-[120px] p-3 transition-all"
                         placeholder="E.g., A song about the French Revolution..."
                     />
                     <div className="flex justify-end gap-3 pt-2">
@@ -903,7 +903,7 @@ export const ProjectDetails: React.FC = () => {
                         <Button
                             onClick={handleGenerateLyrics}
                             disabled={generatingLyrics || !lyricsPrompt.trim()}
-                            className="bg-purple-600 hover:bg-purple-700 text-white"
+                            className="bg-blue-600 hover:bg-blue-700 text-white"
                         >
                             {generatingLyrics ? 'Writing...' : 'Generate Lyrics'}
                         </Button>
