@@ -1,47 +1,55 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { useTheme } from '../contexts/ThemeContext';
-import { Sun, Moon } from 'lucide-react';
+import { Logo } from './Logo';
+import loginBg from '../assets/login-bg.png';
 
 export const Layout: React.FC<{ children: React.ReactNode, headerContent?: React.ReactNode }> = ({ children, headerContent }) => {
     const { user, logout } = useAuth();
-    const { theme, toggleTheme } = useTheme();
 
     return (
-        <div className="min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100">
-            <nav className="bg-white dark:bg-gray-800 shadow-sm">
+        <div className="min-h-screen relative text-gray-100 overflow-hidden font-sans">
+            {/* Global Background */}
+            <div
+                className="fixed inset-0 z-0"
+                style={{
+                    backgroundImage: `url(${loginBg})`,
+                    backgroundSize: 'cover',
+                    backgroundPosition: 'center',
+                }}
+            >
+                <div className="absolute inset-0 bg-black/60 backdrop-blur-[2px]" />
+            </div>
+
+            {/* Glass Navbar */}
+            <nav className="sticky top-0 z-50 w-full bg-white/5 backdrop-blur-xl border-b border-white/10 shadow-lg">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="flex justify-between h-16 items-center">
                         <div className="flex items-center gap-6">
-                            <Link to="/" className="flex-shrink-0 font-bold text-xl text-blue-600 hover:text-blue-700 transition-colors">
-                                LearnAI
+                            <Link to="/" className="flex-shrink-0 transition-transform hover:scale-105 duration-200">
+                                <Logo />
                             </Link>
                             {headerContent}
                         </div>
                         <div className="flex items-center gap-4">
                             {user && (
                                 <>
-                                    <span className="text-sm text-gray-500">{user.email}</span>
-                                    <button onClick={logout} className="text-sm text-gray-500 hover:text-gray-700 dark:hover:text-gray-300">Logout</button>
+                                    <span className="hidden sm:block text-sm text-blue-100/80 font-medium">{user.email}</span>
+                                    <button
+                                        onClick={logout}
+                                        className="text-sm px-4 py-2 rounded-full bg-white/5 hover:bg-white/10 text-white border border-white/10 transition-all duration-200"
+                                    >
+                                        Logout
+                                    </button>
                                 </>
                             )}
-                            <button
-                                onClick={toggleTheme}
-                                className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-                                aria-label="Toggle theme"
-                            >
-                                {theme === 'light' ? (
-                                    <Moon className="w-5 h-5 text-gray-600 dark:text-gray-300" />
-                                ) : (
-                                    <Sun className="w-5 h-5 text-gray-600 dark:text-gray-300" />
-                                )}
-                            </button>
                         </div>
                     </div>
                 </div>
             </nav>
-            <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+
+            {/* Main Content */}
+            <main className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 animate-in fade-in duration-500">
                 {children}
             </main>
         </div>
