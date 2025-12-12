@@ -14,13 +14,27 @@ def initialize_firebase():
         firebase_admin.get_app()
     except ValueError:
         # App not initialized
+        
+        # 1. Try Key Content (Best for Azure/Production)
+        key_content = os.getenv("FIREBASE_SERVICE_ACCOUNT_KEY")
+        if key_content:
+            import json
+            try:
+                cred_dict = json.loads(key_content)
+                cred = credentials.Certificate(cred_dict)
+                firebase_admin.initialize_app(cred)
+                return
+            except Exception as e:
+                logging.error(f"Failed to parse FIREBASE_SERVICE_ACCOUNT_KEY: {e}")
+
+        # 2. Try Key File Path (Best for Local)
         cred_path = os.getenv("FIREBASE_SERVICE_ACCOUNT_KEY_PATH")
         if cred_path and os.path.exists(cred_path):
             cred = credentials.Certificate(cred_path)
             firebase_admin.initialize_app(cred)
         else:
-            # Try default credentials (works on Azure if Identity is set up, or if GOOGLE_APPLICATION_CREDENTIALS is set)
-            logging.warning("FIREBASE_SERVICE_ACCOUNT_KEY_PATH not set or not found. Trying default credentials.")
+            # 3. Default Credentials (Identity)
+            logging.warning("No explicit Firebase credentials found. Trying Application Default Credentials.")
             firebase_admin.initialize_app()
 
 def verify_token(id_token: str):
