@@ -18,7 +18,7 @@ export const Logo: React.FC<LogoProps> = ({ variant = 'small', className = '' })
                 <Sparkles className={`text-cyan-400 ${isLarge ? 'w-8 h-8' : 'w-5 h-5'}`} />
             </div>
             <span className={`font-bold tracking-tight text-white ${isLarge ? 'text-4xl' : 'text-xl'}`}>
-                Learn using AI
+                MnemonIQ
             </span>
         </div>
     );

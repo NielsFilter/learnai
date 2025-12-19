@@ -37,7 +37,7 @@ export const Login: React.FC = () => {
                             <Sparkles className="w-8 h-8 text-cyan-300" />
                         </div>
                         <h2 className="text-4xl font-bold text-white tracking-tight drop-shadow-sm">
-                            Learn using AI
+                            MnemonIQ
                         </h2>
                         <p className="text-blue-100/80 text-lg font-light">
                             Unlock your potential with AI-powered learning
