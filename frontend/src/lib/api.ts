@@ -2,8 +2,6 @@ import { auth } from './firebase';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
 
-const FUNCTION_KEY = import.meta.env.VITE_FUNCTION_KEY;
-
 export const apiRequest = async (endpoint: string, method: string = 'GET', body?: any) => {
     const user = auth.currentUser;
     if (!user) throw new Error('User not authenticated');
@@ -14,10 +12,6 @@ export const apiRequest = async (endpoint: string, method: string = 'GET', body?
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json',
     };
-
-    if (FUNCTION_KEY) {
-        headers['x-functions-key'] = FUNCTION_KEY;
-    }
 
     const response = await fetch(`${API_BASE_URL}${endpoint}`, {
         method,
