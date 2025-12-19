@@ -34,6 +34,7 @@ jobs:
           ###### End of Repository/Build Configurations ######
         env: # Add environment variables for the build
           VITE_API_BASE_URL: "https://func-learn-ai-fgbze4djd2dhh5hm.southafricanorth-01.azurewebsites.net/api"
+          VITE_FUNCTION_KEY: "${{ secrets.AZURE_FUNCTION_KEY }}"
 
   close_pull_request_job:
     if: github.event_name == 'pull_request' && github.event.action == 'closed'
