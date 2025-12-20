@@ -4,10 +4,8 @@ from firebase_admin import credentials, auth
 import logging
 
 # Initialize Firebase Admin
-# We expect FIREBASE_SERVICE_ACCOUNT_KEY to be a path to the json file or the json content itself
-# For simplicity in this environment, we'll assume it's initialized or use default credentials if deployed to Azure with identity
-# But for local dev, we might need a service account key.
-# For now, let's assume the user will provide the service account key path in env vars.
+# We expect FIREBASE_SERVICE_ACCOUNT_KEY to be the JSON content of the service account key.
+# Alternatively, FIREBASE_PROJECT_ID can be provided for limited functionality/identity-based auth.
 
 def initialize_firebase():
     try:
@@ -15,7 +13,7 @@ def initialize_firebase():
     except ValueError:
         # App not initialized
         
-        # 1. Try Key Content (Best for Azure/Production)
+        # Try Key Content (JSON string from environment variable)
         key_content = os.getenv("FIREBASE_SERVICE_ACCOUNT_KEY")
         if key_content:
             import json
@@ -25,34 +23,21 @@ def initialize_firebase():
                 cred_dict = json.loads(cleaned_content)
                 
                 project_id = cred_dict.get('project_id')
-                if not project_id:
-                    logging.error("FIREBASE_SERVICE_ACCOUNT_KEY JSON is missing 'project_id'")
-                
                 cred = credentials.Certificate(cred_dict)
-                logging.info(f"Firebase initialized with key content for project: {project_id}")
+                logging.info(f"Firebase initialized with environment variable key for project: {project_id}")
                 firebase_admin.initialize_app(cred)
                 return
-            except json.JSONDecodeError as je:
-                logging.error(f"FIREBASE_SERVICE_ACCOUNT_KEY is not valid JSON: {je}")
             except Exception as e:
-                logging.error(f"Failed to initialize Firebase with key content: {e}")
+                logging.error(f"Failed to initialize Firebase with FIREBASE_SERVICE_ACCOUNT_KEY: {e}")
 
-        # 2. Try Key File Path (Best for Local)
-        cred_path = os.getenv("FIREBASE_SERVICE_ACCOUNT_KEY_PATH")
-        if cred_path and os.path.exists(cred_path):
-            logging.info(f"Firebase initializing with key file: {cred_path}")
-            cred = credentials.Certificate(cred_path)
-            firebase_admin.initialize_app(cred)
+        # Fallback to Project ID if provided (useful for managed identity or partial configs)
+        project_id = os.getenv("FIREBASE_PROJECT_ID") or os.getenv("GOOGLE_CLOUD_PROJECT")
+        if project_id:
+            logging.info(f"Firebase initializing with project ID: {project_id}")
+            firebase_admin.initialize_app(options={'projectId': project_id})
         else:
-            # 3. Default Credentials (Identity)
-            # Try to help Firebase find the project ID if we have it separately
-            project_id = os.getenv("FIREBASE_PROJECT_ID") or os.getenv("GOOGLE_CLOUD_PROJECT")
-            if project_id:
-                logging.info(f"Firebase initializing with default credentials and project: {project_id}")
-                firebase_admin.initialize_app(options={'projectId': project_id})
-            else:
-                logging.warning("No explicit Firebase credentials or project ID found. Trying pure default credentials.")
-                firebase_admin.initialize_app()
+            logging.warning("No Firebase credentials or project ID found in environment variables.")
+            firebase_admin.initialize_app()
 
 def verify_token(id_token: str):
     initialize_firebase()
