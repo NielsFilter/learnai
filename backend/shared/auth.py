@@ -17,7 +17,6 @@ def initialize_firebase():
         
         # 1. Try Key Content (Best for Azure/Production)
         key_content = os.getenv("FIREBASE_SERVICE_ACCOUNT_KEY")
-        logging.warning(f"FIREBASE_SERVICE_ACCOUNT_KEY: {key_content:85}")
         if key_content:
             import json
             try:
