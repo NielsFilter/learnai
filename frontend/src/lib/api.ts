@@ -3,8 +3,6 @@ import { auth } from './firebase';
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
 
 export const apiRequest = async (endpoint: string, method: string = 'GET', body?: any) => {
-
-    console.log("API_BASE_URL", API_BASE_URL);
     const user = auth.currentUser;
     if (!user) throw new Error('User not authenticated');
 

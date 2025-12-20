@@ -20,22 +20,39 @@ def initialize_firebase():
         if key_content:
             import json
             try:
-                cred_dict = json.loads(key_content)
+                # Basic cleanup in case of accidental escaping
+                cleaned_content = key_content.strip()
+                cred_dict = json.loads(cleaned_content)
+                
+                project_id = cred_dict.get('project_id')
+                if not project_id:
+                    logging.error("FIREBASE_SERVICE_ACCOUNT_KEY JSON is missing 'project_id'")
+                
                 cred = credentials.Certificate(cred_dict)
+                logging.info(f"Firebase initialized with key content for project: {project_id}")
                 firebase_admin.initialize_app(cred)
                 return
+            except json.JSONDecodeError as je:
+                logging.error(f"FIREBASE_SERVICE_ACCOUNT_KEY is not valid JSON: {je}")
             except Exception as e:
-                logging.error(f"Failed to parse FIREBASE_SERVICE_ACCOUNT_KEY: {e}")
+                logging.error(f"Failed to initialize Firebase with key content: {e}")
 
         # 2. Try Key File Path (Best for Local)
         cred_path = os.getenv("FIREBASE_SERVICE_ACCOUNT_KEY_PATH")
         if cred_path and os.path.exists(cred_path):
+            logging.info(f"Firebase initializing with key file: {cred_path}")
             cred = credentials.Certificate(cred_path)
             firebase_admin.initialize_app(cred)
         else:
             # 3. Default Credentials (Identity)
-            logging.warning("No explicit Firebase credentials found. Trying Application Default Credentials.")
-            firebase_admin.initialize_app()
+            # Try to help Firebase find the project ID if we have it separately
+            project_id = os.getenv("FIREBASE_PROJECT_ID") or os.getenv("GOOGLE_CLOUD_PROJECT")
+            if project_id:
+                logging.info(f"Firebase initializing with default credentials and project: {project_id}")
+                firebase_admin.initialize_app(options={'projectId': project_id})
+            else:
+                logging.warning("No explicit Firebase credentials or project ID found. Trying pure default credentials.")
+                firebase_admin.initialize_app()
 
 def verify_token(id_token: str):
     initialize_firebase()
