@@ -7,7 +7,7 @@ on:
       - 'backend/**'
 
 env:
-  AZURE_FUNCTIONAPP_NAME: 'func-learn-ai'
+  AZURE_FUNCTIONAPP_NAME: 'func-learn-ai-fgbze4djd2dhh5hm'
   AZURE_FUNCTIONAPP_PACKAGE_PATH: 'backend'
   PYTHON_VERSION: '3.12'
 
@@ -23,13 +23,6 @@ jobs:
       with:
         python-version: ${{ env.PYTHON_VERSION }}
 
-    - name: 'Resolve Project Dependencies Using Pip'
-      shell: bash
-      run: |
-        pushd './${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}'
-        python -m pip install --upgrade pip
-        pip install -r requirements.txt --target=".python_packages/lib/site-packages"
-        popd
 
     - name: 'Run Azure Functions Action'
       uses: Azure/functions-action@v1
