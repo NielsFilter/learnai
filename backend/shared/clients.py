@@ -29,7 +29,7 @@ def get_mongo_client():
 
 def get_mongo_db():
     client = get_mongo_client()
-    return client["learnai"]
+    return client["mnemoniq"]
 
 def get_blob_service_client():
     connection_string = os.getenv("BLOB_STORAGE_CONNECTION_STRING")
