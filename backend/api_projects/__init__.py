@@ -108,7 +108,7 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
         # 4. Delete Chat History
         db.chat_history.delete_many({"projectId": project_id})
 
-        # 5. Delete Project
+        # 5. Delete Project 
         projects_collection.delete_one({"_id": oid})
 
         return func.HttpResponse(status_code=204)
