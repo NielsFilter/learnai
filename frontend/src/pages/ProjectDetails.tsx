@@ -160,7 +160,12 @@ export const ProjectDetails: React.FC = () => {
         } else {
             setExpandedDocs({});
         }
-    }, [documents]);
+
+        // Force overview tab if no documents
+        if (documents.length === 0 && activeTab !== 'overview') {
+            setActiveTab('overview');
+        }
+    }, [documents, activeTab]);
 
     useEffect(() => {
         chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -496,10 +501,11 @@ export const ProjectDetails: React.FC = () => {
                                 </button>
                                 <button
                                     onClick={() => setActiveTab('chat')}
+                                    disabled={documents.length === 0}
                                     className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${activeTab === 'chat'
                                         ? 'bg-white dark:bg-gray-700 shadow-sm text-blue-600 dark:text-blue-400'
                                         : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
-                                        }`}
+                                        } ${documents.length === 0 ? 'opacity-50 cursor-not-allowed' : ''}`}
                                 >
                                     <div className="flex items-center gap-2">
                                         <MessageSquare className="w-4 h-4" />
@@ -508,10 +514,11 @@ export const ProjectDetails: React.FC = () => {
                                 </button>
                                 <button
                                     onClick={() => setActiveTab('quiz')}
+                                    disabled={documents.length === 0}
                                     className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${activeTab === 'quiz'
                                         ? 'bg-white dark:bg-gray-700 shadow-sm text-blue-600 dark:text-blue-400'
                                         : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
-                                        }`}
+                                        } ${documents.length === 0 ? 'opacity-50 cursor-not-allowed' : ''}`}
                                 >
                                     <div className="flex items-center gap-2">
                                         <FileQuestion className="w-4 h-4" />
@@ -520,10 +527,11 @@ export const ProjectDetails: React.FC = () => {
                                 </button>
                                 <button
                                     onClick={() => setActiveTab('songs')}
+                                    disabled={documents.length === 0}
                                     className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${activeTab === 'songs'
                                         ? 'bg-white dark:bg-gray-700 shadow-sm text-blue-600 dark:text-blue-400'
                                         : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
-                                        }`}
+                                        } ${documents.length === 0 ? 'opacity-50 cursor-not-allowed' : ''}`}
                                 >
                                     <div className="flex items-center gap-2">
                                         <Music className="w-4 h-4" />
@@ -539,29 +547,31 @@ export const ProjectDetails: React.FC = () => {
                             {activeTab === 'overview' ? (
                                 <div className="flex flex-col h-full">
                                     <div className="flex-1 overflow-y-auto p-6 space-y-6">
-                                        <div className="prose dark:prose-invert max-w-none flex justify-between items-start">
-                                            <div>
-                                                <h2 className="text-xl font-bold mb-4">Project Overview</h2>
-                                                <p className="text-gray-600 dark:text-gray-400">
-                                                    Here are the documents uploaded to this project along with their AI-generated summaries.
-                                                    Use this guide to understand the content and decide where to focus your studies.
-                                                </p>
+                                        {documents.length > 0 && (
+                                            <div className="prose dark:prose-invert max-w-none flex justify-between items-start">
+                                                <div>
+                                                    <h2 className="text-xl font-bold mb-4">Project Overview</h2>
+                                                    <p className="text-gray-600 dark:text-gray-400">
+                                                        Here are the documents uploaded to this project along with their AI-generated summaries.
+                                                        Use this guide to understand the content and decide where to focus your studies.
+                                                    </p>
+                                                </div>
+                                                <div>
+                                                    <input
+                                                        type="file"
+                                                        multiple
+                                                        ref={fileInputRef}
+                                                        className="hidden"
+                                                        onChange={handleFileChange}
+                                                        accept=".pdf,.txt,.docx,.md"
+                                                    />
+                                                    <Button onClick={handleAddDocumentClick} disabled={uploading}>
+                                                        {uploading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Plus className="w-4 h-4 mr-2" />}
+                                                        Add Document
+                                                    </Button>
+                                                </div>
                                             </div>
-                                            <div>
-                                                <input
-                                                    type="file"
-                                                    multiple
-                                                    ref={fileInputRef}
-                                                    className="hidden"
-                                                    onChange={handleFileChange}
-                                                    accept=".pdf,.txt,.docx,.md"
-                                                />
-                                                <Button onClick={handleAddDocumentClick} disabled={uploading}>
-                                                    {uploading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Plus className="w-4 h-4 mr-2" />}
-                                                    Add Document
-                                                </Button>
-                                            </div>
-                                        </div>
+                                        )}
 
                                         <div className="space-y-4">
                                             {documents.map((doc, idx) => (
@@ -619,8 +629,26 @@ export const ProjectDetails: React.FC = () => {
                                                 </div>
                                             ))}
                                             {documents.length === 0 && (
-                                                <div className="text-center py-10 text-gray-500">
-                                                    No documents found. Upload a document to generate a summary.
+                                                <div className="flex flex-col items-center justify-center h-full py-20 text-center">
+                                                    <div className="w-20 h-20 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mb-6">
+                                                        <FileText className="w-10 h-10 text-gray-400" />
+                                                    </div>
+                                                    <h3 className="text-xl font-bold mb-2">No Documents Uploaded</h3>
+                                                    <p className="text-gray-500 max-w-sm mb-6">
+                                                        Upload a document to generate summaries, quizzes, and start chatting.
+                                                    </p>
+                                                    <input
+                                                        type="file"
+                                                        multiple
+                                                        ref={fileInputRef}
+                                                        className="hidden"
+                                                        onChange={handleFileChange}
+                                                        accept=".pdf,.txt,.docx,.md"
+                                                    />
+                                                    <Button onClick={handleAddDocumentClick} disabled={uploading}>
+                                                        {uploading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Plus className="w-4 h-4 mr-2" />}
+                                                        Upload Your First Document
+                                                    </Button>
                                                 </div>
                                             )}
                                         </div>
