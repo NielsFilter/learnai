@@ -2,8 +2,8 @@ import azure.functions as func
 import logging
 import os
 from azure.storage.blob import BlobServiceClient
-from ..shared.auth import authenticate_request
-from ..shared.clients import get_mongo_db
+from shared.auth import authenticate_request
+from shared.clients import get_mongo_db
 from bson.objectid import ObjectId
 
 @authenticate_request

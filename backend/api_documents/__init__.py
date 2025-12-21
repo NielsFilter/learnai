@@ -3,8 +3,8 @@ import logging
 import json
 import os
 from bson.objectid import ObjectId
-from ..shared.auth import authenticate_request
-from ..shared.clients import get_mongo_db, get_blob_service_client
+from shared.auth import authenticate_request
+from shared.clients import get_mongo_db, get_blob_service_client
 
 @authenticate_request
 def main(req: func.HttpRequest) -> func.HttpResponse:

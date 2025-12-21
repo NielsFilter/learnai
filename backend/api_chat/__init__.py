@@ -4,9 +4,9 @@ import json
 import os
 from datetime import datetime
 from datetime import datetime
-from ..shared.auth import authenticate_request
-from ..shared.clients import get_openai_client, get_mongo_db
-from ..shared.rag import perform_vector_search
+from shared.auth import authenticate_request
+from shared.clients import get_openai_client, get_mongo_db
+from shared.rag import perform_vector_search
 
 @authenticate_request
 def main(req: func.HttpRequest) -> func.HttpResponse:

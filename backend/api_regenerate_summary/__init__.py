@@ -4,8 +4,8 @@ import json
 import os
 from azure.storage.blob import BlobServiceClient
 from azure.storage.blob import BlobServiceClient
-from ..shared.auth import authenticate_request
-from ..process_file.ingestion_logic import generate_summary, store_document_metadata, extract_text_from_pdf
+from shared.auth import authenticate_request
+from process_file.ingestion_logic import generate_summary, store_document_metadata, extract_text_from_pdf
 
 @authenticate_request
 def main(req: func.HttpRequest) -> func.HttpResponse:

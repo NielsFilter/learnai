@@ -5,9 +5,9 @@ import os
 from datetime import datetime, timedelta
 from bson.objectid import ObjectId
 from bson.objectid import ObjectId
-from ..shared.auth import authenticate_request
-from ..shared.clients import get_openai_client, get_mongo_db
-from ..shared.rag import perform_vector_search
+from shared.auth import authenticate_request
+from shared.clients import get_openai_client, get_mongo_db
+from shared.rag import perform_vector_search
 from azure.storage.blob import BlobServiceClient, generate_blob_sas, BlobSasPermissions
 from elevenlabs.client import ElevenLabs
 

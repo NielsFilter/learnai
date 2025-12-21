@@ -1,8 +1,8 @@
 import azure.functions as func
 import logging
 import json
-from ..shared.auth import authenticate_request
-from ..shared.clients import get_mongo_db
+from shared.auth import authenticate_request
+from shared.clients import get_mongo_db
 
 @authenticate_request
 def main(req: func.HttpRequest) -> func.HttpResponse:

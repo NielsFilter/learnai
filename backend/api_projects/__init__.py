@@ -6,7 +6,7 @@ from pymongo import MongoClient
 from bson import ObjectId
 from datetime import datetime
 from datetime import datetime
-from ..shared.auth import authenticate_request
+from shared.auth import authenticate_request
 
 @authenticate_request
 def main(req: func.HttpRequest) -> func.HttpResponse:
@@ -86,7 +86,7 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
         
         # 1. Delete from Blob Storage
         try:
-            from ..shared.clients import get_blob_service_client
+            from shared.clients import get_blob_service_client
             blob_service_client = get_blob_service_client()
             container_client = blob_service_client.get_container_client("docs")
             
