@@ -323,28 +323,22 @@ export const ProjectDetails: React.FC = () => {
             const token = await auth.currentUser?.getIdToken();
             if (!token) throw new Error("User not authenticated");
 
-            let uploadedCount = 0;
-            // Upload files sequentially to avoid connection limits/hanging
-            for (const file of files) {
-                uploadedCount++;
-                // Optional: Update some UI state if we want to show "Uploading 1 of X..."
-                // setUploadProgress(`Uploading ${uploadedCount} of ${files.length}...`); 
+            if (files.length === 0) return;
+            const file = files[0];
 
-                const formData = new FormData();
-                formData.append('file', file); // This creates the multipart structure
+            const response = await fetch(`${API_BASE_URL}/upload`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'X-Project-Id': id,
+                    'X-Filename': encodeURIComponent(file.name),
+                    'Content-Type': 'application/octet-stream'
+                },
+                body: file
+            });
 
-                const response = await fetch(`${API_BASE_URL}/upload`, {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': `Bearer ${token}`,
-                        'X-Project-Id': id
-                    },
-                    body: formData
-                });
-
-                if (!response.ok) {
-                    throw new Error(`Upload failed for ${file.name}`);
-                }
+            if (!response.ok) {
+                throw new Error(`Upload failed for ${file.name}`);
             }
 
             // After upload triggering, the poll will pick up the status/documents eventually.
@@ -562,7 +556,6 @@ export const ProjectDetails: React.FC = () => {
                                                 <div>
                                                     <input
                                                         type="file"
-                                                        multiple
                                                         ref={fileInputRef}
                                                         className="hidden"
                                                         onChange={handleFileChange}
@@ -642,7 +635,6 @@ export const ProjectDetails: React.FC = () => {
                                                     </p>
                                                     <input
                                                         type="file"
-                                                        multiple
                                                         ref={fileInputRef}
                                                         className="hidden"
                                                         onChange={handleFileChange}
