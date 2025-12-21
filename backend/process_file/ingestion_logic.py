@@ -4,7 +4,7 @@ import io
 from typing import List, Dict, Any
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from azure.ai.documentintelligence.models import AnalyzeResult
-from ..shared.clients import get_openai_client, get_document_intelligence_client, get_mongo_db
+from shared.clients import get_openai_client, get_document_intelligence_client, get_mongo_db
 
 # Initialize MongoDB Collection
 def get_mongo_collection():
