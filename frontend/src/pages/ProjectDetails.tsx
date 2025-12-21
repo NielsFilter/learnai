@@ -98,6 +98,7 @@ export const ProjectDetails: React.FC = () => {
     // File Upload State
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [uploading, setUploading] = useState(false);
+    const isUploadingRef = useRef(false);
 
     // Polling for processing status
     useEffect(() => {
@@ -310,9 +311,11 @@ export const ProjectDetails: React.FC = () => {
 
     const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
         if (!e.target.files || e.target.files.length === 0 || !id) return;
+        if (isUploadingRef.current) return;
 
         const files = Array.from(e.target.files);
         setUploading(true);
+        isUploadingRef.current = true;
         setProject(prev => prev ? { ...prev, status: 'processing', processingCount: (prev.processingCount || 0) + files.length } : null);
 
         try {
@@ -346,6 +349,8 @@ export const ProjectDetails: React.FC = () => {
             // Revert status if needed or let poll fix it
         } finally {
             setUploading(false);
+            isUploadingRef.current = false;
+            // Clear the input value to allow uploading the same file again if needed
             if (fileInputRef.current) fileInputRef.current.value = '';
         }
     };
@@ -353,11 +358,6 @@ export const ProjectDetails: React.FC = () => {
     const handleDeleteDocument = async (filename: string, e: React.MouseEvent) => {
         e.stopPropagation(); // Prevent accordion toggle
         if (!id) return;
-
-        if (documents.length <= 1) {
-            alert("You cannot delete the last document of a project.");
-            return;
-        }
 
         if (!confirm(`Are you sure you want to delete "${filename}"? This will remove its summary and associated data.`)) return;
 
@@ -649,30 +649,33 @@ export const ProjectDetails: React.FC = () => {
                                             )}
                                         </div>
                                     </div>
-                                    <div className="p-6 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900">
-                                        <form
-                                            onSubmit={async (e) => {
-                                                e.preventDefault();
-                                                if (!newMessage.trim()) return;
-                                                setActiveTab('chat');
-                                                await handleSendMessage(e);
-                                            }}
-                                            className="flex gap-2"
-                                        >
-                                            <div className="flex-1">
-                                                <Input
-                                                    value={newMessage}
-                                                    onChange={(e) => setNewMessage(e.target.value)}
-                                                    placeholder="Ask a question..."
-                                                    className="flex-1 w-full"
-                                                    disabled={sending}
-                                                />
-                                            </div>
-                                            <Button type="submit" disabled={sending || !newMessage.trim()}>
-                                                <Send className="w-5 h-5" />
-                                            </Button>
-                                        </form>
-                                    </div>
+
+                                    {documents.length > 0 && (
+                                        <div className="p-6 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900">
+                                            <form
+                                                onSubmit={async (e) => {
+                                                    e.preventDefault();
+                                                    if (!newMessage.trim()) return;
+                                                    setActiveTab('chat');
+                                                    await handleSendMessage(e);
+                                                }}
+                                                className="flex gap-2"
+                                            >
+                                                <div className="flex-1">
+                                                    <Input
+                                                        value={newMessage}
+                                                        onChange={(e) => setNewMessage(e.target.value)}
+                                                        placeholder="Ask a question..."
+                                                        className="flex-1 w-full"
+                                                        disabled={sending}
+                                                    />
+                                                </div>
+                                                <Button type="submit" disabled={sending || !newMessage.trim()}>
+                                                    <Send className="w-5 h-5" />
+                                                </Button>
+                                            </form>
+                                        </div>
+                                    )}
                                 </div>
                             ) : activeTab === 'chat' ? (
                                 <div className="flex flex-col h-[calc(100vh-14rem)]">
@@ -1054,7 +1057,7 @@ export const ProjectDetails: React.FC = () => {
                     )}
 
                 </div>
-            </Layout>
+            </Layout >
 
 
 

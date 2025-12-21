@@ -48,14 +48,14 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
         if not project:
             return func.HttpResponse("Project not found", status_code=404)
             
-        # Check constraint: Cannot delete the last document
-        doc_count = db.documents.count_documents({"projectId": project_id})
-        if doc_count <= 1:
-            return func.HttpResponse(
-                json.dumps({"error": "Cannot delete the last document. A project must have at least one document."}),
-                status_code=400,
-                mimetype="application/json"
-            )
+        # Check constraint: Cannot delete the last document - REMOVED
+        # doc_count = db.documents.count_documents({"projectId": project_id})
+        # if doc_count <= 1:
+        #     return func.HttpResponse(
+        #         json.dumps({"error": "Cannot delete the last document. A project must have at least one document."}),
+        #         status_code=400,
+        #         mimetype="application/json"
+        #     )
             
         try:
             # 1. Delete from Blob Storage
