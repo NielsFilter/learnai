@@ -7,9 +7,11 @@
             "direction": "in",
             "name": "req",
             "methods": [
-                "get"
+                "get",
+                "post",
+                "delete"
             ],
-            "route": "documents"
+            "route": "documents/{action?}"
         },
         {
             "type": "http",

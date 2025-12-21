@@ -54,6 +54,8 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
             "name": name,
             "subject": subject,
             "ownerId": uid,
+            "status": "created",
+            "processingCount": 0,
             "createdAt": datetime.utcnow().isoformat()
         }
         

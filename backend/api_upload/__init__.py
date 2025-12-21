@@ -47,6 +47,17 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
         except:
             pass # Container might exist
 
+        # 2.5 Update Project Status (Increment processing count)
+        # We do this BEFORE upload to ensure the processor doesn't finish before we increment if it's super fast,
+        # but mainly to show UI status immediately.
+        db.projects.update_one(
+            {"_id": ObjectId(project_id)},
+            {
+                "$inc": {"processingCount": 1},
+                "$set": {"status": "processing"}
+            }
+        )
+
         blob_client = blob_service_client.get_blob_client(container=container_name, blob=f"{project_id}/{filename}")
         
         # Upload data

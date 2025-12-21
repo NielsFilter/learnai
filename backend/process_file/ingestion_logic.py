@@ -200,3 +200,27 @@ def process_document(filename: str, file_stream: bytes, project_id: str = "globa
     # 4. Store
     store_vectors(filename, chunks, embeddings, project_id)
     logging.info(f"Completed processing for {filename}")
+
+    # 5. Update Project Status (Decrement processing count)
+    try:
+        from bson.objectid import ObjectId
+        db = get_mongo_db()
+        
+        # Decrement
+        db.projects.update_one(
+            {"_id": ObjectId(project_id)},
+            {"$inc": {"processingCount": -1}}
+        )
+        
+        # Check if done
+        project = db.projects.find_one({"_id": ObjectId(project_id)})
+        # If count < 0, reset to 0 just in case. If <= 0, set to ready.
+        if project and project.get("processingCount", 0) <= 0:
+            db.projects.update_one(
+                {"_id": ObjectId(project_id)},
+                {"$set": {"status": "ready", "processingCount": 0}}
+            )
+            logging.info(f"Project {project_id} is now READY.")
+            
+    except Exception as e:
+        logging.error(f"Error updating project status: {e}")

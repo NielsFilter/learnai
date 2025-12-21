@@ -7,12 +7,14 @@ import { Button } from '../components/Button';
 import { Card } from '../components/Card';
 import { Modal } from '../components/Modal';
 import { Input } from '../components/Input';
-import { Send, MessageSquare, FileQuestion, BookOpen, ChevronRight, ChevronDown, Trash2, Music, Sparkles, AlertCircle } from 'lucide-react';
+import { Send, MessageSquare, FileQuestion, BookOpen, ChevronRight, ChevronDown, Trash2, Music, Sparkles, AlertCircle, Loader2, Plus, AlertTriangle, FileText } from 'lucide-react';
 
 interface Project {
     _id: string;
     name: string;
     subject: string;
+    status?: 'created' | 'processing' | 'ready';
+    processingCount?: number;
 }
 
 interface ChatMessage {
@@ -22,6 +24,7 @@ interface ChatMessage {
 }
 
 interface Document {
+    _id?: string; // Add optional ID if available from backend, though we mostly use filename
     filename: string;
     summary: string;
     uploadedAt: string;
@@ -90,6 +93,37 @@ export const ProjectDetails: React.FC = () => {
     const [errorMessage, setErrorMessage] = useState('');
     const [clearingChat, setClearingChat] = useState(false);
     const [deletingSongId, setDeletingSongId] = useState<string | null>(null);
+
+    // File Upload State
+    const fileInputRef = useRef<HTMLInputElement>(null);
+    const [uploading, setUploading] = useState(false);
+
+    // Polling for processing status
+    useEffect(() => {
+        let interval: NodeJS.Timeout;
+
+        if (project?.status === 'processing') {
+            interval = setInterval(async () => {
+                if (!id) return;
+                try {
+                    const projects = await apiRequest('/projects');
+                    const found = projects.find((p: Project) => p._id === id);
+                    if (found) {
+                        setProject(found);
+                        // If status changed to ready, refresh documents
+                        if (found.status === 'ready' && project.status === 'processing') {
+                            const docs = await apiRequest(`/documents?projectId=${id}`);
+                            setDocuments(docs);
+                        }
+                    }
+                } catch (error) {
+                    console.error('Polling error:', error);
+                }
+            }, 3000); // Poll every 3 seconds
+        }
+
+        return () => clearInterval(interval);
+    }, [project?.status, id]);
 
     useEffect(() => {
         const fetchProjectData = async () => {
@@ -264,6 +298,80 @@ export const ProjectDetails: React.FC = () => {
         }
     };
 
+    const handleAddDocumentClick = () => {
+        fileInputRef.current?.click();
+    };
+
+    const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (!e.target.files || e.target.files.length === 0 || !id) return;
+
+        const files = Array.from(e.target.files);
+        setUploading(true);
+        setProject(prev => prev ? { ...prev, status: 'processing', processingCount: (prev.processingCount || 0) + files.length } : null);
+
+        try {
+            // Upload files sequentially or in parallel? Parallel is fine for now.
+            await Promise.all(files.map(async (file) => {
+                const formData = new FormData();
+                formData.append('file', file);
+                formData.append('projectId', id);
+
+                // We need to use fetch directly or update apiRequest to handle FormData if it doesn't already
+                // Assuming apiRequest handles JSON, we might need a separate call for multipart.
+                // Let's implement a quick fetch wrapper for upload here or assume apiRequest can be modified/used.
+                // Since api.ts is simple, let's just use fetch here for simplicity and control.
+                const token = localStorage.getItem('token'); // If authentication was needed, but it's valid for now.
+
+                // Re-using the env variable logic or just hardcoding the base path from api.ts
+                const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || (import.meta.env.VITE_AZURE_FUNCTIONS_URL ? `${import.meta.env.VITE_AZURE_FUNCTIONS_URL}/api` : 'http://localhost:7071/api');
+
+                const response = await fetch(`${API_BASE_URL}/upload`, {
+                    method: 'POST',
+                    body: formData,
+                    // Content-Type header is set automatically by browser with boundary for FormData
+                });
+
+                if (!response.ok) {
+                    throw new Error(`Upload failed for ${file.name}`);
+                }
+            }));
+
+            // After upload triggering, the poll will pick up the status/documents eventually.
+            // But we set immediate processing state.
+        } catch (error) {
+            console.error('Upload failed:', error);
+            setErrorMessage('Failed to upload one or more files.');
+            setShowErrorModal(true);
+            // Revert status if needed or let poll fix it
+        } finally {
+            setUploading(false);
+            if (fileInputRef.current) fileInputRef.current.value = '';
+        }
+    };
+
+    const handleDeleteDocument = async (filename: string, e: React.MouseEvent) => {
+        e.stopPropagation(); // Prevent accordion toggle
+        if (!id) return;
+
+        if (documents.length <= 1) {
+            alert("You cannot delete the last document of a project.");
+            return;
+        }
+
+        if (!confirm(`Are you sure you want to delete "${filename}"? This will remove its summary and associated data.`)) return;
+
+        try {
+            await apiRequest(`/documents?projectId=${id}&filename=${encodeURIComponent(filename)}`, 'DELETE');
+            setDocuments(prev => prev.filter(d => d.filename !== filename));
+            // Also update messages if necessary, or just let them be? 
+            // Ideally we might want to clear chat if it was based on this doc, but RAG is complex.
+        } catch (error) {
+            console.error('Failed to delete document:', error);
+            setErrorMessage('Failed to delete document.');
+            setShowErrorModal(true);
+        }
+    };
+
     const handleGenerateQuiz = async (topic?: string) => {
         if (!id) return;
         setGeneratingQuiz(true);
@@ -345,7 +453,31 @@ export const ProjectDetails: React.FC = () => {
                     <span className="font-medium text-gray-900 dark:text-gray-100">{project.name}</span>
                 </div>
             }>
-                <div className="flex flex-col h-[calc(100vh-8rem)]">
+            }>
+                <div className="flex flex-col h-[calc(100vh-8rem)] relative">
+                    {/* Processing Overlay */}
+                    {project.status === 'processing' && (
+                        <div className="absolute inset-0 z-50 bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm flex flex-col items-center justify-center p-6 animate-in fade-in duration-300">
+                            <div className="bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-xl max-w-md w-full text-center border border-gray-100 dark:border-gray-700">
+                                <div className="relative w-20 h-20 mx-auto mb-6">
+                                    <div className="absolute inset-0 border-4 border-blue-100 dark:border-blue-900 rounded-full"></div>
+                                    <div className="absolute inset-0 border-4 border-blue-600 rounded-full border-t-transparent animate-spin"></div>
+                                    <FileText className="absolute inset-0 m-auto w-8 h-8 text-blue-600 animate-pulse" />
+                                </div>
+                                <h3 className="text-2xl font-bold mb-2">Processing Documents</h3>
+                                <p className="text-gray-500 dark:text-gray-400 mb-6">
+                                    AI is analyzing your files to generate summaries and quiz content. This may take a few moments.
+                                </p>
+                                {project.processingCount && project.processingCount > 0 && (
+                                    <div className="inline-flex items-center gap-2 px-4 py-2 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded-full text-sm font-medium">
+                                        <Loader2 className="w-4 h-4 animate-spin" />
+                                        <span>{project.processingCount} document{project.processingCount > 1 ? 's' : ''} remaining</span>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    )}
+
                     <div className="mb-4">
                         <div className="flex justify-between items-center">
                             <div>
@@ -407,12 +539,28 @@ export const ProjectDetails: React.FC = () => {
                             {activeTab === 'overview' ? (
                                 <div className="flex flex-col h-full">
                                     <div className="flex-1 overflow-y-auto p-6 space-y-6">
-                                        <div className="prose dark:prose-invert max-w-none">
-                                            <h2 className="text-xl font-bold mb-4">Project Overview</h2>
-                                            <p className="text-gray-600 dark:text-gray-400">
-                                                Here are the documents uploaded to this project along with their AI-generated summaries.
-                                                Use this guide to understand the content and decide where to focus your studies.
-                                            </p>
+                                        <div className="prose dark:prose-invert max-w-none flex justify-between items-start">
+                                            <div>
+                                                <h2 className="text-xl font-bold mb-4">Project Overview</h2>
+                                                <p className="text-gray-600 dark:text-gray-400">
+                                                    Here are the documents uploaded to this project along with their AI-generated summaries.
+                                                    Use this guide to understand the content and decide where to focus your studies.
+                                                </p>
+                                            </div>
+                                            <div>
+                                                <input
+                                                    type="file"
+                                                    multiple
+                                                    ref={fileInputRef}
+                                                    className="hidden"
+                                                    onChange={handleFileChange}
+                                                    accept=".pdf,.txt,.docx,.md"
+                                                />
+                                                <Button onClick={handleAddDocumentClick} disabled={uploading}>
+                                                    {uploading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Plus className="w-4 h-4 mr-2" />}
+                                                    Add Document
+                                                </Button>
+                                            </div>
                                         </div>
 
                                         <div className="space-y-4">
@@ -428,9 +576,18 @@ export const ProjectDetails: React.FC = () => {
                                                             </div>
                                                             <h3 className="font-bold text-lg">{doc.filename}</h3>
                                                         </div>
-                                                        <ChevronDown
-                                                            className={`w-5 h-5 text-gray-500 transition-transform duration-200 ${expandedDocs[idx] ? 'transform rotate-180' : ''}`}
-                                                        />
+                                                        <div className="flex items-center gap-2">
+                                                            <button
+                                                                onClick={(e) => handleDeleteDocument(doc.filename, e)}
+                                                                className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-full transition-colors"
+                                                                title="Delete Document"
+                                                            >
+                                                                <Trash2 className="w-4 h-4" />
+                                                            </button>
+                                                            <ChevronDown
+                                                                className={`w-5 h-5 text-gray-500 transition-transform duration-200 ${expandedDocs[idx] ? 'transform rotate-180' : ''}`}
+                                                            />
+                                                        </div>
                                                     </button>
 
                                                     {expandedDocs[idx] && (
