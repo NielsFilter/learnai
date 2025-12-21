@@ -36,21 +36,23 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({ isOpen, 
                 if (!user) throw new Error('User not authenticated');
                 const token = await user.getIdToken();
 
-                const file = files[0];
-                const response = await fetch(`${API_BASE_URL}/upload`, {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': `Bearer ${token}`,
-                        'X-Project-Id': projectId,
-                        'X-Filename': encodeURIComponent(file.name),
-                        'Content-Type': file.type || 'application/octet-stream',
-                    },
-                    body: file // Send file directly as body
-                });
+                // Upload files sequentially
+                for (const file of Array.from(files)) {
+                    const response = await fetch(`${API_BASE_URL}/upload`, {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': `Bearer ${token}`,
+                            'X-Project-Id': projectId,
+                            'X-Filename': encodeURIComponent(file.name),
+                            'Content-Type': file.type || 'application/octet-stream',
+                        },
+                        body: file // Send file directly as body
+                    });
 
-                if (!response.ok) {
-                    const errorText = await response.text();
-                    throw new Error(`Failed to upload ${file.name}: ${errorText}`);
+                    if (!response.ok) {
+                        const errorText = await response.text();
+                        throw new Error(`Failed to upload ${file.name}: ${errorText}`);
+                    }
                 }
             }
 
@@ -108,14 +110,15 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({ isOpen, 
                                 onChange={(e) => setFiles(e.target.files)}
                                 className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                                 accept=".pdf,.txt"
+                                multiple
                                 required
                             />
                             <div className="flex flex-col items-center gap-2 text-gray-500">
                                 <Upload className="w-6 h-6" />
                                 <span className="text-sm">
                                     {files && files.length > 0
-                                        ? `${files[0].name}`
-                                        : "Click to upload a file"}
+                                        ? `${files.length} file${files.length > 1 ? 's' : ''} selected`
+                                        : "Click to upload files"}
                                 </span>
                             </div>
                         </div>
