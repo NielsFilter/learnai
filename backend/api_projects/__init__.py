@@ -20,7 +20,7 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
          return func.HttpResponse("Database configuration error", status_code=500)
     
     client = MongoClient(connection_string)
-    db = client["learnai"]
+    db = client["mnemoniq"]
     projects_collection = db["projects"]
 
     # 3. Handle Requests

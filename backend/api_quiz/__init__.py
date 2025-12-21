@@ -67,7 +67,7 @@ def generate_quiz(req, uid, db):
     chat_deployment = os.getenv("AZURE_OPENAI_CHAT_DEPLOYMENT") or "gpt-35-turbo"
 
     prompt = f"""
-    Generate a multiple choice quiz with 5 questions based on the following text.
+    Generate a multiple choice quiz with 10 questions based on the following text.
     Return the output as a JSON array of objects.
     Each object should have:
     - "question": string
@@ -138,7 +138,7 @@ def generate_surprise_topic(db, project_id):
     chat_deployment = os.getenv("AZURE_OPENAI_CHAT_DEPLOYMENT") or "gpt-35-turbo"
     
     prompt = f"""
-    Based on the following document summaries, generate a search query that covers 5 diverse and interesting topics found in the text.
+    Based on the following document summaries, generate a search query that covers 10 diverse and interesting topics found in the text.
     Return ONLY the search query string, nothing else.
     
     Summaries:
