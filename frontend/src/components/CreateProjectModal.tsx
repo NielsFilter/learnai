@@ -36,7 +36,8 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({ isOpen, 
                 if (!user) throw new Error('User not authenticated');
                 const token = await user.getIdToken();
 
-                const uploadPromises = Array.from(files).map(async (file) => {
+                // Upload files sequentially
+                for (const file of Array.from(files)) {
                     const response = await fetch(`${API_BASE_URL}/upload`, {
                         method: 'POST',
                         headers: {
@@ -52,9 +53,7 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({ isOpen, 
                         const errorText = await response.text();
                         throw new Error(`Failed to upload ${file.name}: ${errorText}`);
                     }
-                });
-
-                await Promise.all(uploadPromises);
+                }
             }
 
             onProjectCreated();

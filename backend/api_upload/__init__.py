@@ -10,6 +10,7 @@ from urllib.parse import unquote
 @authenticate_request
 def main(req: func.HttpRequest) -> func.HttpResponse:
     logging.info('Python HTTP trigger function processed an upload request.')
+    logging.info(f"Request Headers: {req.headers}")
     
     uid = req.user['uid']
 

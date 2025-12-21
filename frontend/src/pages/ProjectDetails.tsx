@@ -323,7 +323,13 @@ export const ProjectDetails: React.FC = () => {
             const token = await auth.currentUser?.getIdToken();
             if (!token) throw new Error("User not authenticated");
 
-            await Promise.all(files.map(async (file) => {
+            let uploadedCount = 0;
+            // Upload files sequentially to avoid connection limits/hanging
+            for (const file of files) {
+                uploadedCount++;
+                // Optional: Update some UI state if we want to show "Uploading 1 of X..."
+                // setUploadProgress(`Uploading ${uploadedCount} of ${files.length}...`); 
+
                 const response = await fetch(`${API_BASE_URL}/upload`, {
                     method: 'POST',
                     headers: {
@@ -338,7 +344,7 @@ export const ProjectDetails: React.FC = () => {
                 if (!response.ok) {
                     throw new Error(`Upload failed for ${file.name}`);
                 }
-            }));
+            }
 
             // After upload triggering, the poll will pick up the status/documents eventually.
             // But we set immediate processing state.
