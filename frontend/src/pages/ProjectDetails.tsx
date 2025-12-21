@@ -7,7 +7,7 @@ import { Button } from '../components/Button';
 import { Card } from '../components/Card';
 import { Modal } from '../components/Modal';
 import { Input } from '../components/Input';
-import { Send, MessageSquare, FileQuestion, BookOpen, ChevronRight, ChevronDown, Trash2, Music, Sparkles, AlertCircle, Loader2, Plus, AlertTriangle, FileText } from 'lucide-react';
+import { Send, MessageSquare, FileQuestion, BookOpen, ChevronRight, ChevronDown, Trash2, Music, Sparkles, AlertCircle, Loader2, Plus, FileText } from 'lucide-react';
 
 interface Project {
     _id: string;
@@ -100,7 +100,7 @@ export const ProjectDetails: React.FC = () => {
 
     // Polling for processing status
     useEffect(() => {
-        let interval: NodeJS.Timeout;
+        let interval: ReturnType<typeof setInterval>;
 
         if (project?.status === 'processing') {
             interval = setInterval(async () => {
@@ -320,7 +320,7 @@ export const ProjectDetails: React.FC = () => {
                 // Assuming apiRequest handles JSON, we might need a separate call for multipart.
                 // Let's implement a quick fetch wrapper for upload here or assume apiRequest can be modified/used.
                 // Since api.ts is simple, let's just use fetch here for simplicity and control.
-                const token = localStorage.getItem('token'); // If authentication was needed, but it's valid for now.
+                // const token = localStorage.getItem('token'); // If authentication was needed, but it's valid for now.
 
                 // Re-using the env variable logic or just hardcoding the base path from api.ts
                 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || (import.meta.env.VITE_AZURE_FUNCTIONS_URL ? `${import.meta.env.VITE_AZURE_FUNCTIONS_URL}/api` : 'http://localhost:7071/api');
