@@ -330,15 +330,16 @@ export const ProjectDetails: React.FC = () => {
                 // Optional: Update some UI state if we want to show "Uploading 1 of X..."
                 // setUploadProgress(`Uploading ${uploadedCount} of ${files.length}...`); 
 
+                const formData = new FormData();
+                formData.append('file', file); // This creates the multipart structure
+
                 const response = await fetch(`${API_BASE_URL}/upload`, {
                     method: 'POST',
                     headers: {
                         'Authorization': `Bearer ${token}`,
-                        'X-Project-Id': id,
-                        'X-Filename': encodeURIComponent(file.name),
-                        'Content-Type': 'application/octet-stream'
+                        'X-Project-Id': id
                     },
-                    body: file
+                    body: formData
                 });
 
                 if (!response.ok) {
