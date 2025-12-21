@@ -453,7 +453,7 @@ export const ProjectDetails: React.FC = () => {
                     <span className="font-medium text-gray-900 dark:text-gray-100">{project.name}</span>
                 </div>
             }>
-            }>
+
                 <div className="flex flex-col h-[calc(100vh-8rem)] relative">
                     {/* Processing Overlay */}
                     {project.status === 'processing' && (
