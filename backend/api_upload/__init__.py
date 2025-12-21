@@ -5,6 +5,7 @@ from azure.storage.blob import BlobServiceClient
 from shared.auth import authenticate_request
 from shared.clients import get_mongo_db
 from bson.objectid import ObjectId
+from urllib.parse import unquote
 
 @authenticate_request
 def main(req: func.HttpRequest) -> func.HttpResponse:
@@ -21,7 +22,7 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
     # A common workaround is to send the file content in body and filename/projectId in headers.
     
     project_id = req.headers.get('X-Project-Id')
-    filename = req.headers.get('X-Filename')
+    filename = unquote(req.headers.get('X-Filename')) if req.headers.get('X-Filename') else None
     
     if not project_id or not filename:
         return func.HttpResponse("X-Project-Id and X-Filename headers are required", status_code=400)

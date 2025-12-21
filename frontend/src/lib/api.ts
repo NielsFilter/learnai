@@ -1,6 +1,9 @@
 import { auth } from './firebase';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
+export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ||
+    (import.meta.env.VITE_AZURE_FUNCTIONS_URL
+        ? `${import.meta.env.VITE_AZURE_FUNCTIONS_URL}/api`
+        : (import.meta.env.DEV ? 'http://localhost:7071/api' : '/api'));
 
 export const apiRequest = async (endpoint: string, method: string = 'GET', body?: any) => {
     const user = auth.currentUser;

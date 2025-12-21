@@ -1,7 +1,8 @@
 import React, { useEffect, useState, useRef } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { Layout } from '../components/Layout';
-import { apiRequest } from '../lib/api';
+import { apiRequest, API_BASE_URL } from '../lib/api';
+import { auth } from '../lib/firebase';
 import { useParams, Link } from 'react-router-dom';
 import { Button } from '../components/Button';
 import { Card } from '../components/Card';
@@ -315,25 +316,20 @@ export const ProjectDetails: React.FC = () => {
         setProject(prev => prev ? { ...prev, status: 'processing', processingCount: (prev.processingCount || 0) + files.length } : null);
 
         try {
-            // Upload files sequentially or in parallel? Parallel is fine for now.
+            // Upload files in parallel using the backend's expected binary format (Body + Headers)
+            const token = await auth.currentUser?.getIdToken();
+            if (!token) throw new Error("User not authenticated");
+
             await Promise.all(files.map(async (file) => {
-                const formData = new FormData();
-                formData.append('file', file);
-                formData.append('projectId', id);
-
-                // We need to use fetch directly or update apiRequest to handle FormData if it doesn't already
-                // Assuming apiRequest handles JSON, we might need a separate call for multipart.
-                // Let's implement a quick fetch wrapper for upload here or assume apiRequest can be modified/used.
-                // Since api.ts is simple, let's just use fetch here for simplicity and control.
-                // const token = localStorage.getItem('token'); // If authentication was needed, but it's valid for now.
-
-                // Re-using the env variable logic or just hardcoding the base path from api.ts
-                const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || (import.meta.env.VITE_AZURE_FUNCTIONS_URL ? `${import.meta.env.VITE_AZURE_FUNCTIONS_URL}/api` : 'http://localhost:7071/api');
-
                 const response = await fetch(`${API_BASE_URL}/upload`, {
                     method: 'POST',
-                    body: formData,
-                    // Content-Type header is set automatically by browser with boundary for FormData
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'X-Project-Id': id,
+                        'X-Filename': encodeURIComponent(file.name),
+                        'Content-Type': 'application/octet-stream'
+                    },
+                    body: file
                 });
 
                 if (!response.ok) {

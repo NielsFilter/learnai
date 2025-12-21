@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Button } from './Button';
 import { Input } from './Input';
-import { apiRequest } from '../lib/api';
+import { apiRequest, API_BASE_URL } from '../lib/api';
 import { X, Upload } from 'lucide-react';
 import { auth } from '../lib/firebase';
 
@@ -37,12 +37,12 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({ isOpen, 
                 const token = await user.getIdToken();
 
                 const uploadPromises = Array.from(files).map(async (file) => {
-                    const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || '/api'}/upload`, {
+                    const response = await fetch(`${API_BASE_URL}/upload`, {
                         method: 'POST',
                         headers: {
                             'Authorization': `Bearer ${token}`,
                             'X-Project-Id': projectId,
-                            'X-Filename': file.name,
+                            'X-Filename': encodeURIComponent(file.name),
                             'Content-Type': file.type || 'application/octet-stream',
                         },
                         body: file // Send file directly as body

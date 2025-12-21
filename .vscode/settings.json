@@ -3,5 +3,6 @@
     "azureFunctions.projectLanguage": "Python",
     "azureFunctions.projectRuntime": "~4",
     "debug.internalConsoleOptions": "neverOpen",
-    "azureFunctions.pythonVenv": ".venv"
+    "azureFunctions.pythonVenv": ".venv",
+    "css.lint.unknownAtRules": "ignore"
 }
